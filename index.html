@@ -153,7 +153,7 @@ function CMWorklist({ onNav }) {
   const [af, setAf] = useState('All (6)');
   const rows = CM_MAP[af] ? cmMembers.filter(m => m.status === CM_MAP[af]) : cmMembers;
   return (
-    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+    <div className="flex flex-col gap-4 p-6 flex-1" style={{ background:'#F7F9FB' }}>
       <div className="flex items-start justify-between">
         <div>
           <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PLAN VIEW · CARE MANAGER WORKLIST</div>
@@ -189,7 +189,7 @@ function CMWorklist({ onNav }) {
         ))}
       </div>
 
-      <div className="bg-white rounded shadow-sm overflow-hidden">
+      <div className="bg-white rounded shadow-sm">
         <div className="grid text-xs font-bold px-4 py-2"
           style={{ background:'#F0F2F5', color:'#8A9BB0',
             gridTemplateColumns:'2fr 1.7fr 2.3fr 1.2fr 70px 80px' }}>
@@ -246,7 +246,7 @@ const awvMembers = [
 
 function AWVQueue({ onNav }) {
   return (
-    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+    <div className="flex flex-col gap-4 p-6 flex-1" style={{ background:'#F7F9FB' }}>
       <div className="rounded px-4 py-2 text-xs flex items-start gap-2"
         style={{ background:'#EDE9FE', color:'#6D28D9', borderLeft:'4px solid #6D28D9' }}>
         <span className="font-bold flex-shrink-0">EXAMPLE: Provider Workflow —</span>
@@ -266,7 +266,7 @@ function AWVQueue({ onNav }) {
         <StatCard label="Benefits Activated"  value="284"  sub="73% activation"   valueColor="#1D7A5F" />
         <StatCard label="Avg Days to Activate" value="3.2d" sub="↓ from 14d"     valueColor="#14907F" />
       </div>
-      <div className="bg-white rounded shadow-sm overflow-hidden">
+      <div className="bg-white rounded shadow-sm">
         <div className="grid text-xs font-bold px-4 py-2"
           style={{ background:'#F0F2F5', color:'#8A9BB0', gridTemplateColumns:'2fr 1fr 2.5fr 1.4fr 1fr' }}>
           <span>MEMBER</span><span>AWV DATE</span><span>FINDINGS</span><span>STATUS</span><span></span>
@@ -309,7 +309,7 @@ const memberBenefits = [
 
 function MemberDetail() {
   return (
-    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+    <div className="flex flex-col gap-4 p-6 flex-1" style={{ background:'#F7F9FB' }}>
       <div className="text-xs font-bold" style={{ color:'#14907F' }}>PLAN VIEW · MEMBER BENEFIT ACTION DETAIL</div>
       <div className="bg-white rounded shadow-sm p-4">
         <div className="flex items-start gap-4">
@@ -344,7 +344,7 @@ function MemberDetail() {
       </div>
 
       {memberBenefits.map(b => (
-        <div key={b.name} className="bg-white rounded shadow-sm flex overflow-hidden">
+        <div key={b.name} className="bg-white rounded shadow-sm flex">
           <div className="w-1.5 flex-shrink-0" style={{ background: b.border }} />
           <div className="flex-1 p-4">
             <div className="flex items-center justify-between mb-2">
@@ -410,7 +410,7 @@ function NeedsAssessment() {
   const setSeverity = (id, sev) => setSelected(prev => ({ ...prev, [id]: sev }));
 
   return (
-    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+    <div className="flex flex-col gap-4 p-6 flex-1" style={{ background:'#F7F9FB' }}>
       <div>
         <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PLAN VIEW · NEEDS ASSESSMENT</div>
         <div className="flex items-end justify-between">
@@ -524,7 +524,7 @@ const openGaps = [
 
 function PanelOverview() {
   return (
-    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+    <div className="flex flex-col gap-4 p-6 flex-1" style={{ background:'#F7F9FB' }}>
       <div>
         <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PLAN VIEW · PANEL OVERVIEW</div>
         <h1 className="text-2xl font-semibold" style={{ color:'#1A2332' }}>Panel-Level Activation &amp; Gap Reporting</h1>
@@ -621,7 +621,7 @@ const complianceItems = [
 function PlanDashboard() {
   const maxBar = Math.max(...barData);
   return (
-    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+    <div className="flex flex-col gap-4 p-6 flex-1" style={{ background:'#F7F9FB' }}>
       <div>
         <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PLAN VIEW · EXECUTIVE DASHBOARD</div>
         <h1 className="text-2xl font-semibold" style={{ color:'#1A2332' }}>Execution Governance at Population Scale</h1>
@@ -689,7 +689,7 @@ function ActivationLog() {
   const filter = LOG_FILTER[activeTab];
   const rows = filter ? activations.filter(a => a.status === filter) : activations;
   return (
-    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+    <div className="flex flex-col gap-4 p-6 flex-1" style={{ background:'#F7F9FB' }}>
       <div className="flex items-start justify-between">
         <div>
           <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PLAN VIEW · MEMBER ACTIVATION RECORD</div>
@@ -711,7 +711,7 @@ function ActivationLog() {
           </button>
         ))}
       </div>
-      <div className="bg-white rounded shadow-sm overflow-hidden">
+      <div className="bg-white rounded shadow-sm">
         <div className="grid text-xs font-bold px-4 py-2"
           style={{ background:'#F0F2F5', color:'#8A9BB0',
             gridTemplateColumns:'60px 100px 1.4fr 1.1fr 85px 1fr 110px 110px' }}>
@@ -806,7 +806,7 @@ const STEP_STYLES = {
 function BenefitSequencing() {
   const [expanded, setExpanded] = useState('Personal Care Aide');
   return (
-    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+    <div className="flex flex-col gap-4 p-6 flex-1" style={{ background:'#F7F9FB' }}>
       <div className="flex items-start justify-between">
         <div>
           <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PLAN VIEW · BENEFIT SEQUENCING ENGINE</div>
@@ -861,7 +861,7 @@ function BenefitSequencing() {
         const isOpen = expanded === b.need;
         const decidedPayer = PAYER_STACK.find(p => p.id === b.decision);
         return (
-          <div key={b.need} className="bg-white rounded shadow-sm overflow-hidden">
+          <div key={b.need} className="bg-white rounded shadow-sm">
             {/* Header row */}
             <div className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50"
               onClick={() => setExpanded(isOpen ? null : b.need)}
@@ -960,7 +960,7 @@ const COV_LAYERS = [
 function CoverageStack() {
   const [openLayer, setOpenLayer] = useState('medicaid');
   return (
-    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+    <div className="flex flex-col gap-4 p-6 flex-1" style={{ background:'#F7F9FB' }}>
       <div className="flex items-start justify-between">
         <div>
           <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PLAN VIEW · MEMBER COVERAGE STACK</div>
@@ -1020,7 +1020,7 @@ function CoverageStack() {
       {COV_LAYERS.map(layer => {
         const isOpen = openLayer === layer.id;
         return (
-          <div key={layer.id} className="bg-white rounded shadow-sm overflow-hidden"
+          <div key={layer.id} className="bg-white rounded shadow-sm"
             style={{ borderLeft:`4px solid ${layer.border}` }}>
             <div className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50"
               onClick={() => setOpenLayer(isOpen ? null : layer.id)}
@@ -1119,7 +1119,7 @@ function fmt(n) { return n >= 1000 ? `$${(n/1000).toFixed(1)}K` : `$${n}`; }
 
 function ILOSTracker() {
   return (
-    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+    <div className="flex flex-col gap-4 p-6 flex-1" style={{ background:'#F7F9FB' }}>
       <div className="flex items-start justify-between">
         <div>
           <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PLAN VIEW · ILOS &amp; CAP TRACKER</div>
@@ -1184,7 +1184,7 @@ function ILOSTracker() {
       </div>
 
       {/* Per-category spend table */}
-      <div className="bg-white rounded shadow-sm overflow-hidden">
+      <div className="bg-white rounded shadow-sm">
         <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom:'1px solid #E2E8EF' }}>
           <span className="text-sm font-bold" style={{ color:'#1A2332' }}>SSBCI Spend by Benefit Category</span>
           <span className="text-xs" style={{ color:'#8A9BB0' }}>All amounts count toward ILOS cap · Medicaid and CBO columns shown for context</span>
@@ -1230,7 +1230,7 @@ function ILOSTracker() {
       </div>
 
       {/* Member-level benefit allowance exposure */}
-      <div className="bg-white rounded shadow-sm overflow-hidden">
+      <div className="bg-white rounded shadow-sm">
         <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom:'1px solid #E2E8EF' }}>
           <span className="text-sm font-bold" style={{ color:'#1A2332' }}>Member-Level SSBCI Utilization — High Exposure</span>
           <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ background:'#FDECEA', color:'#C0392B' }}>2 members &gt;75% of benefit allowance</span>
@@ -1381,7 +1381,7 @@ function MemberCarePlan() {
   const ssbciTotal = CARE_PLAN_BENEFITS.filter(b => b.payer === 'SSBCI' && b.activation !== 'Deferred').length;
 
   return (
-    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+    <div className="flex flex-col gap-4 p-6 flex-1" style={{ background:'#F7F9FB' }}>
       <div className="flex items-start justify-between">
         <div>
           <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PLAN VIEW · MEMBER CARE PLAN</div>
@@ -1458,7 +1458,7 @@ function MemberCarePlan() {
         const isOpen = expanded === b.benefit;
         const ss = STATUS_PLAN[b.status] || { bg:'#F0F2F5', text:'#4A5568' };
         return (
-          <div key={b.benefit} className="bg-white rounded shadow-sm overflow-hidden"
+          <div key={b.benefit} className="bg-white rounded shadow-sm"
             style={{ borderLeft:`4px solid ${b.payerColor}` }}>
             {/* Row header */}
             <div className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50"
@@ -1621,7 +1621,7 @@ function MemberPortal() {
   const [acknowledged, setAcknowledged] = useState(false);
 
   return (
-    <div className="flex flex-col flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+    <div className="flex flex-col flex-1" style={{ background:'#F7F9FB' }}>
 
       {/* Mobile frame wrapper */}
       <div className="flex justify-center py-6 px-4">
@@ -1788,7 +1788,7 @@ function App() {
   const [active, setActive] = useState('CM Worklist');
   const Screen = SCREENS[active];
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col min-h-screen">
       <NavBar active={active} onNav={setActive} />
       <Screen onNav={setActive} />
     </div>
