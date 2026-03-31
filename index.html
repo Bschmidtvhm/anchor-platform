@@ -1,0 +1,1801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ANCHOR — Platform UI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy:       '#1A2332',
+            teal:       '#14907F',
+            'teal-dk':  '#0D7A6A',
+            'teal-lt':  '#D4EDE9',
+            'teal-mid': '#1D7A5F',
+            'teal-pale':'#E8F5F1',
+            bg:         '#F7F9FB',
+            muted:      '#8A9BB0',
+            body:       '#4A5568',
+            inactive:   '#AABCCC',
+            border:     '#E2E8EF',
+            'hdr-bg':   '#F0F2F5',
+            'red-dk':   '#C0392B',
+            'red-lt':   '#FDECEA',
+            amber:      '#F5A623',
+            'amber-dk': '#B45309',
+            'amber-lt': '#FEF3DC',
+            'blue-dk':  '#1D4ED8',
+            'blue-lt':  '#DBEAFE',
+            'purple-dk':'#6D28D9',
+            'purple-lt':'#EDE9FE',
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #F7F9FB; }
+    * { box-sizing: border-box; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #F0F2F5; }
+    ::-webkit-scrollbar-thumb { background: #AABCCC; border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState } = React;
+
+const STATUS_STYLES = {
+  'Action Needed':    { bg:'#FEF3DC', dot:'#F5A623', text:'#B45309' },
+  'In Progress':      { bg:'#EDE9FE', dot:'#6D28D9', text:'#6D28D9' },
+  'Fulfilled':        { bg:'#D4EDE9', dot:'#14907F', text:'#0D7A6A' },
+  'Pending Auth':     { bg:'#DBEAFE', dot:'#1D4ED8', text:'#1D4ED8' },
+  'Ready to Fulfill': { bg:'#E8F5F1', dot:'#1D7A5F', text:'#1D7A5F' },
+  'Initiated':        { bg:'#F0F2F5', dot:'#8A9BB0', text:'#4A5568' },
+  'Complete':         { bg:'#D4EDE9', dot:'#14907F', text:'#0D7A6A' },
+  'On Track':         { bg:'#E8F5F1', dot:'#1D7A5F', text:'#1D7A5F' },
+  'Attention':        { bg:'#FEF3DC', dot:'#F5A623', text:'#B45309' },
+};
+
+const TRIGGER_STYLES = {
+  'Post-Discharge':   { bg:'#FDECEA', text:'#C0392B', icon:'🏥' },
+  'ED Frequent':      { bg:'#FEF3DC', text:'#B45309', icon:'⚠️' },
+  'CM Interaction':   { bg:'#DBEAFE', text:'#1D4ED8', icon:'📋' },
+  'Annual Wellness':  { bg:'#EDE9FE', text:'#6D28D9', icon:'🩺' },
+  'HRA Flag':         { bg:'#D4EDE9', text:'#0D7A6A', icon:'📊' },
+};
+
+function StatusBadge({ status }) {
+  const s = STATUS_STYLES[status] || { bg:'#F0F2F5', dot:'#8A9BB0', text:'#4A5568' };
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-bold"
+      style={{ background: s.bg, color: s.text }}>
+      <span className="w-1.5 h-1.5 rounded-full inline-block flex-shrink-0" style={{ background: s.dot }} />
+      {status}
+    </span>
+  );
+}
+
+function TriggerBadge({ trigger }) {
+  const t = TRIGGER_STYLES[trigger] || { bg:'#F0F2F5', text:'#4A5568', icon:'•' };
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
+      style={{ background: t.bg, color: t.text }}>
+      <span>{t.icon}</span>{trigger}
+    </span>
+  );
+}
+
+function Avatar({ initials, size = 'sm' }) {
+  const sz = size === 'lg' ? 'w-14 h-14 text-lg' : 'w-7 h-7 text-xs';
+  return (
+    <div className={`${sz} rounded-full flex items-center justify-center font-bold flex-shrink-0`}
+      style={{ background:'#D4EDE9', color:'#0D7A6A' }}>{initials}</div>
+  );
+}
+
+function StatCard({ label, value, sub, valueColor = '#14907F' }) {
+  return (
+    <div className="bg-white rounded p-4 flex flex-col gap-1 shadow-sm">
+      <div className="text-xs font-bold" style={{ color:'#8A9BB0' }}>{label}</div>
+      <div className="text-3xl font-bold leading-none" style={{ color: valueColor }}>{value}</div>
+      <div className="text-xs" style={{ color:'#8A9BB0' }}>{sub}</div>
+    </div>
+  );
+}
+
+const TABS = ['CM Worklist','Benefit Sequencing','Coverage Stack','ILOS / Cap Tracker','Member Care Plan','Member Portal','Provider: AWV','Member Detail','Needs Assessment','Panel Overview','Plan Dashboard','Activation Log'];
+
+function NavBar({ active, onNav }) {
+  return (
+    <nav className="flex items-center h-11 px-4 gap-0 flex-shrink-0 overflow-x-auto" style={{ background:'#1A2332' }}>
+      <div className="flex items-center gap-1.5 mr-4 flex-shrink-0">
+        <span className="text-white font-bold text-sm">ANCHOR</span>
+        <span className="w-2 h-2 rounded-full" style={{ background:'#14907F' }} />
+      </div>
+      {TABS.map(tab => (
+        <button key={tab} onClick={() => onNav(tab)}
+          className="relative px-3 h-11 text-xs font-bold transition-colors flex-shrink-0"
+          style={{ color: active === tab ? '#FFFFFF' : '#AABCCC', background:'transparent', border:'none', cursor:'pointer' }}>
+          {tab}
+          {active === tab && (
+            <span className="absolute bottom-0 left-3 right-3 h-1 rounded-t" style={{ background:'#14907F' }} />
+          )}
+        </button>
+      ))}
+      <div className="ml-auto w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+        style={{ background:'#14907F' }}>SC</div>
+    </nav>
+  );
+}
+
+/* ── SCREEN 0: CM WORKLIST (new — health plan care manager view) ── */
+const cmMembers = [
+  { initials:'MC', name:'Margaret Chen',   age:78, plan:'D-SNP', id:'D-4821', trigger:'Post-Discharge', triggerDetail:'DC from St. Joseph\'s — Mar 8', needs:'Fall risk · Home safety · Medication mgmt', status:'Action Needed', cm:'S. Chen',    riskTier:'HIGH', isNew:false },
+  { initials:'RW', name:'Robert Williams', age:82, plan:'D-SNP', id:'D-3312', trigger:'ED Frequent',    triggerDetail:'3rd ED visit in 60 days',        needs:'Transportation · Caregiver strain · SDOH', status:'Action Needed', cm:'M. Park',    riskTier:'HIGH', isNew:false },
+  { initials:'HP', name:'Harold Patel',    age:80, plan:'D-SNP', id:'D-7734', trigger:'ED Frequent',    triggerDetail:'2nd ED visit in 30 days',        needs:'Food insecurity · Social isolation',        status:'Action Needed', cm:'Unassigned', riskTier:'HIGH', isNew:true  },
+  { initials:'DJ', name:'Dorothy Jackson', age:71, plan:'D-SNP', id:'D-5519', trigger:'CM Interaction', triggerDetail:'Outreach call — Mar 9',          needs:'Home-delivered meals · Personal care aide', status:'In Progress',  cm:'S. Chen',    riskTier:'MOD',  isNew:false },
+  { initials:'JL', name:'James Liu',       age:85, plan:'D-SNP', id:'D-2208', trigger:'Annual Wellness',triggerDetail:'AWV — Mar 5 · Dr. K. Patel',    needs:'Incontinence supplies · Mobility DME',     status:'Fulfilled',    cm:'M. Park',    riskTier:'MOD',  isNew:false },
+  { initials:'ER', name:'Eleanor Reyes',   age:74, plan:'D-SNP', id:'D-6601', trigger:'HRA Flag',       triggerDetail:'Health Risk Assessment — Mar 4', needs:'Personal care aide · Transportation',       status:'Pending Auth', cm:'S. Chen',    riskTier:'MOD',  isNew:false },
+];
+const RISK_COLORS = { HIGH:'#C0392B', MOD:'#F5A623', LOW:'#14907F' };
+const CM_TABS = ['All (6)','Action Needed (3)','In Progress (1)','Pending Auth (1)','Fulfilled (1)'];
+const CM_MAP  = { 'All (6)':null,'Action Needed (3)':'Action Needed','In Progress (1)':'In Progress','Pending Auth (1)':'Pending Auth','Fulfilled (1)':'Fulfilled' };
+
+function CMWorklist({ onNav }) {
+  const [af, setAf] = useState('All (6)');
+  const rows = CM_MAP[af] ? cmMembers.filter(m => m.status === CM_MAP[af]) : cmMembers;
+  return (
+    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PLAN VIEW · CARE MANAGER WORKLIST</div>
+          <h1 className="text-2xl font-bold" style={{ color:'#0B1D3A' }}>Member Needs Queue</h1>
+          <div className="text-sm mt-1" style={{ color:'#8A9BB0' }}>5 members require action · All trigger types · March 10, 2026</div>
+        </div>
+        <button className="px-4 py-2 rounded text-sm font-bold text-white" style={{ background:'#14907F', border:'none', cursor:'pointer' }}>+ Log Interaction</button>
+      </div>
+
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="Active Members"      value="6"    sub="with open needs"         valueColor="#C0392B" />
+        <StatCard label="Needs Identified"    value="24"   sub="avg 4.0 per member"       valueColor="#1A2332" />
+        <StatCard label="Benefits Activated"  value="17"   sub="71% activation rate"      valueColor="#1D7A5F" />
+        <StatCard label="Avg Days to Fulfill" value="3.2d" sub="↓ from 14d baseline"      valueColor="#14907F" />
+      </div>
+
+      <div className="flex gap-2 items-center flex-wrap">
+        <span className="text-xs font-bold" style={{ color:'#8A9BB0' }}>TRIGGER TYPES:</span>
+        {Object.entries(TRIGGER_STYLES).map(([k,v]) => (
+          <span key={k} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
+            style={{ background:v.bg, color:v.text }}>{v.icon} {k}</span>
+        ))}
+      </div>
+
+      <div className="flex gap-0">
+        {CM_TABS.map(tab => (
+          <button key={tab} onClick={() => setAf(tab)}
+            className="px-4 py-1.5 text-sm transition-colors"
+            style={{ background:af===tab?'#1A2332':'#F0F2F5', color:af===tab?'#FFFFFF':'#4A5568',
+              fontWeight:af===tab?'bold':'normal', border:'none', cursor:'pointer',
+              borderRadius:'4px 4px 0 0', marginRight:'2px' }}>{tab}
+          </button>
+        ))}
+      </div>
+
+      <div className="bg-white rounded shadow-sm overflow-hidden">
+        <div className="grid text-xs font-bold px-4 py-2"
+          style={{ background:'#F0F2F5', color:'#8A9BB0',
+            gridTemplateColumns:'2fr 1.7fr 2.3fr 1.2fr 70px 80px' }}>
+          <span>MEMBER</span><span>TRIGGER</span><span>IDENTIFIED NEEDS</span><span>STATUS</span><span>RISK</span><span></span>
+        </div>
+        {rows.map((m, i) => (
+          <div key={m.id} className="grid items-center px-4 py-3 border-t hover:bg-gray-50 transition-colors"
+            style={{ borderColor:'#E2E8EF', gridTemplateColumns:'2fr 1.7fr 2.3fr 1.2fr 70px 80px',
+              borderLeft: m.isNew ? '3px solid #C0392B' : '3px solid transparent' }}>
+            <div className="flex items-center gap-2">
+              <Avatar initials={m.initials} />
+              <div>
+                <div className="text-sm font-bold" style={{ color:'#1A2332' }}>{m.name}</div>
+                <div className="text-xs" style={{ color:'#8A9BB0' }}>Age {m.age} · {m.plan} · {m.id}</div>
+                <div className="text-xs" style={{ color:'#8A9BB0' }}>CM: {m.cm}</div>
+              </div>
+            </div>
+            <div>
+              <TriggerBadge trigger={m.trigger} />
+              <div className="text-xs mt-1" style={{ color:'#8A9BB0' }}>{m.triggerDetail}</div>
+              {m.isNew && <div className="text-xs font-bold" style={{ color:'#C0392B' }}>New today</div>}
+            </div>
+            <div className="text-xs" style={{ color:'#4A5568' }}>{m.needs}</div>
+            <StatusBadge status={m.status} />
+            <span className="text-xs font-bold" style={{ color: RISK_COLORS[m.riskTier] || '#8A9BB0' }}>{m.riskTier}</span>
+            <div className="flex justify-end">
+              <button onClick={() => onNav('Member Detail')}
+                className="px-3 py-1 rounded text-xs font-bold"
+                style={{ background:m.status==='Fulfilled'?'#E2E8EF':'#14907F',
+                  color:m.status==='Fulfilled'?'#4A5568':'#FFFFFF', border:'none', cursor:'pointer' }}>
+                Act →
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded px-4 py-2 text-xs" style={{ background:'#D4EDE9', color:'#0D7A6A', borderLeft:'4px solid #14907F' }}>
+        Anchor surfaces benefit actions regardless of trigger source — discharge, ED visits, care manager outreach, HRA, or AWV. Every interaction is a governed moment.
+      </div>
+      <footer className="text-center text-xs mt-2" style={{ color:'#8A9BB0' }}>ANCHOR · MVP Platform Mockup · anchorcare.ai · CONFIDENTIAL</footer>
+    </div>
+  );
+}
+
+/* ── SCREEN 1: PROVIDER AWV QUEUE (relabeled as provider-specific example) ── */
+const awvMembers = [
+  { initials:'MC', name:'Margaret Chen',   age:78, plan:'D-SNP', mrn:'D-4821', date:'Today',     findings:'Fall risk · Incontinence · Food insecurity', status:'Action Needed' },
+  { initials:'RW', name:'Robert Williams', age:82, plan:'D-SNP', mrn:'D-3312', date:'Today',     findings:'Mobility · Caregiver strain',               status:'Action Needed' },
+  { initials:'DJ', name:'Dorothy Jackson', age:71, plan:'D-SNP', mrn:'D-5519', date:'Yesterday', findings:'Transportation',                             status:'In Progress'  },
+  { initials:'JL', name:'James Liu',       age:85, plan:'D-SNP', mrn:'D-2208', date:'Mar 5',     findings:'Fall risk · Incontinence',                  status:'Fulfilled'    },
+  { initials:'ER', name:'Eleanor Reyes',   age:74, plan:'D-SNP', mrn:'D-6601', date:'Mar 4',     findings:'Home-delivered meals · Personal care',       status:'Pending Auth' },
+];
+
+function AWVQueue({ onNav }) {
+  return (
+    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+      <div className="rounded px-4 py-2 text-xs flex items-start gap-2"
+        style={{ background:'#EDE9FE', color:'#6D28D9', borderLeft:'4px solid #6D28D9' }}>
+        <span className="font-bold flex-shrink-0">EXAMPLE: Provider Workflow —</span>
+        <span>The Annual Wellness Visit (AWV) is one of many trigger types Anchor supports. Health plan care managers use the CM Worklist for post-discharge, ED, outreach, and HRA-driven needs.</span>
+      </div>
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PROVIDER VIEW · AWV QUEUE</div>
+          <h1 className="text-2xl font-bold" style={{ color:'#0B1D3A' }}>Today's AWV Findings</h1>
+          <div className="text-sm mt-1" style={{ color:'#8A9BB0' }}>4 members require action · March 10, 2026</div>
+        </div>
+        <button className="px-4 py-2 rounded text-sm font-bold text-white" style={{ background:'#14907F', border:'none', cursor:'pointer' }}>+ Log New AWV</button>
+      </div>
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="AWVs Completed"      value="142"  sub="of 180 eligible"  valueColor="#14907F" />
+        <StatCard label="Findings Identified" value="387"  sub="avg 2.7 per AWV"  valueColor="#1A2332" />
+        <StatCard label="Benefits Activated"  value="284"  sub="73% activation"   valueColor="#1D7A5F" />
+        <StatCard label="Avg Days to Activate" value="3.2d" sub="↓ from 14d"     valueColor="#14907F" />
+      </div>
+      <div className="bg-white rounded shadow-sm overflow-hidden">
+        <div className="grid text-xs font-bold px-4 py-2"
+          style={{ background:'#F0F2F5', color:'#8A9BB0', gridTemplateColumns:'2fr 1fr 2.5fr 1.4fr 1fr' }}>
+          <span>MEMBER</span><span>AWV DATE</span><span>FINDINGS</span><span>STATUS</span><span></span>
+        </div>
+        {awvMembers.map(m => (
+          <div key={m.mrn} className="grid items-center px-4 py-2 border-t hover:bg-gray-50 transition-colors"
+            style={{ borderColor:'#E2E8EF', gridTemplateColumns:'2fr 1fr 2.5fr 1.4fr 1fr' }}>
+            <div className="flex items-center gap-2">
+              <Avatar initials={m.initials} />
+              <div>
+                <div className="text-sm font-bold" style={{ color:'#1A2332' }}>{m.name}</div>
+                <div className="text-xs" style={{ color:'#8A9BB0' }}>Age {m.age} · {m.plan} · {m.mrn}</div>
+              </div>
+            </div>
+            <div className="text-sm" style={{ color:'#4A5568' }}>{m.date}</div>
+            <div className="text-xs" style={{ color:'#4A5568' }}>{m.findings}</div>
+            <StatusBadge status={m.status} />
+            <div className="flex justify-end">
+              <button onClick={() => onNav('Member Detail')}
+                className="px-3 py-1 rounded text-xs font-bold"
+                style={{ background:m.status==='Fulfilled'?'#E2E8EF':'#14907F',
+                  color:m.status==='Fulfilled'?'#4A5568':'#FFFFFF', border:'none', cursor:'pointer' }}>
+                View →
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <footer className="text-center text-xs mt-2" style={{ color:'#8A9BB0' }}>ANCHOR · MVP Platform Mockup · anchorcare.ai · CONFIDENTIAL</footer>
+    </div>
+  );
+}
+
+/* ── SCREEN 2: MEMBER DETAIL (updated to show trigger context) ── */
+const memberBenefits = [
+  { name:'Incontinence Supplies',      status:'Ready to Fulfill', payer:'Medicare Part B',   payerColor:'#1D4ED8', cap:'$0 / $1,200',        need:'Incontinence',   action:'Generate Order',  border:'#14907F' },
+  { name:'Fall Prevention (Grab Bars)',status:'Ready to Fulfill', payer:'Plan Supplemental', payerColor:'#14907F', cap:'$0 / $500',           need:'Fall risk',      action:'Route to Vendor', border:'#14907F' },
+  { name:'Home-Delivered Meals',        status:'Pending Auth',    payer:'Medicaid LTSS',     payerColor:'#6D28D9', cap:'State auth required', need:'Food insecurity', action:'Initiate Auth',  border:'#F5A623' },
+];
+
+function MemberDetail() {
+  return (
+    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+      <div className="text-xs font-bold" style={{ color:'#14907F' }}>PLAN VIEW · MEMBER BENEFIT ACTION DETAIL</div>
+      <div className="bg-white rounded shadow-sm p-4">
+        <div className="flex items-start gap-4">
+          <Avatar initials="MC" size="lg" />
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-1 flex-wrap">
+              <h2 className="text-xl font-semibold" style={{ color:'#1A2332' }}>Margaret Chen</h2>
+              <StatusBadge status="Action Needed" />
+              <span className="text-xs font-bold" style={{ color:'#C0392B' }}>Risk: HIGH</span>
+            </div>
+            <div className="text-sm mb-2" style={{ color:'#8A9BB0' }}>Age 78 · MRN: D-4821 · D-SNP · Aid Code: 14H · CM: Sarah Chen, RN</div>
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <TriggerBadge trigger="Post-Discharge" />
+              <span className="text-xs" style={{ color:'#8A9BB0' }}>Discharged St. Joseph's Medical — Mar 8, 2026 · DRG: CHF Exacerbation</span>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {['Fall risk','Incontinence','Food insecurity'].map(f => (
+                <span key={f} className="px-2 py-0.5 rounded text-xs" style={{ background:'#D4EDE9', color:'#0D7A6A' }}>{f}</span>
+              ))}
+            </div>
+          </div>
+          <button className="px-4 py-2 rounded text-sm font-bold text-white flex-shrink-0"
+            style={{ background:'#14907F', border:'none', cursor:'pointer' }}>Fulfill All Ready</button>
+        </div>
+      </div>
+
+      <div>
+        <div className="text-sm font-bold" style={{ color:'#1A2332' }}>IDENTIFIED NEEDS → BENEFIT ACTIONS</div>
+        <div className="text-xs mt-0.5" style={{ color:'#8A9BB0' }}>
+          Trigger: Post-Discharge · Anchor mapped needs to eligibility across Medicare, Medicaid LTSS, and Plan Supplemental
+        </div>
+      </div>
+
+      {memberBenefits.map(b => (
+        <div key={b.name} className="bg-white rounded shadow-sm flex overflow-hidden">
+          <div className="w-1.5 flex-shrink-0" style={{ background: b.border }} />
+          <div className="flex-1 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <span className="text-base font-bold" style={{ color:'#1A2332' }}>{b.name}</span>
+                <StatusBadge status={b.status} />
+              </div>
+              <div className="flex items-center gap-2">
+                <button className="px-3 py-1 rounded text-xs" style={{ color:'#14907F', border:'1px solid #E2E8EF', cursor:'pointer' }}>Why? ▼</button>
+                <button className="px-3 py-1 rounded text-xs font-bold"
+                  style={{ background:b.status==='Pending Auth'?'#FFFFFF':'#14907F',
+                    color:b.status==='Pending Auth'?'#14907F':'#FFFFFF',
+                    border:b.status==='Pending Auth'?'1px solid #14907F':'none', cursor:'pointer' }}>{b.action}</button>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 text-sm flex-wrap">
+              <span style={{ color:'#4A5568' }}>Payer: <strong style={{ color: b.payerColor }}>{b.payer}</strong></span>
+              <span style={{ color:'#1A2332' }}>Cap: {b.cap}</span>
+              <span style={{ color:'#8A9BB0' }}>Need: {b.need}</span>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <div className="rounded p-4" style={{ background:'#F0F2F5' }}>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-bold" style={{ color:'#1A2332' }}>Auto-Generated Documentation</span>
+          <button className="px-3 py-1 bg-white rounded text-xs" style={{ color:'#4A5568', border:'1px solid #E2E8EF', cursor:'pointer' }}>Copy All</button>
+        </div>
+        <p className="text-xs leading-relaxed" style={{ color:'#4A5568' }}>
+          Member Margaret Chen (MRN D-4821) — Post-discharge benefit activation: Medicare Part B incontinence supply order + Plan Supplemental fall prevention authorization. Triggered by 3/8/26 discharge from St. Joseph's. Documentation auto-generated at point of activation. Care manager: Sarah Chen, RN.
+        </p>
+      </div>
+      <footer className="text-center text-xs mt-2" style={{ color:'#8A9BB0' }}>ANCHOR · MVP Platform Mockup · anchorcare.ai · CONFIDENTIAL</footer>
+    </div>
+  );
+}
+
+/* ── SCREEN 3: NEEDS ASSESSMENT (was "Findings Entry" — trigger-agnostic) ── */
+const NEED_DEFS = [
+  { id:'fall',      label:'Fall Risk',           desc:'Unsteady gait, recent falls, home hazards' },
+  { id:'inco',      label:'Incontinence',         desc:'Urinary/bowel incontinence' },
+  { id:'food',      label:'Food Insecurity',      desc:'Inadequate nutrition access' },
+  { id:'mobility',  label:'Mobility / Transport', desc:'Limited mobility or transport access' },
+  { id:'caregiver', label:'Caregiver Strain',     desc:'Caregiver overwhelmed or absent' },
+  { id:'social',    label:'Social Isolation',     desc:'Limited social contact or support' },
+  { id:'medication',label:'Medication Mgmt',      desc:'Non-adherence, polypharmacy risk' },
+  { id:'home',      label:'Home Safety',          desc:'Hazards: stairs, lighting, access' },
+  { id:'mental',    label:'Mental Health',        desc:'Depression, anxiety, cognition' },
+];
+const SEVERITIES = ['identified','significant','urgent'];
+const TRIGGER_OPTIONS = ['Post-Discharge','ED Frequent Visitor','CM Interaction','Annual Wellness (AWV)','HRA Flag','Other'];
+
+function NeedsAssessment() {
+  const [selected, setSelected] = useState({ fall:'identified', inco:'identified', food:'identified' });
+  const [triggerSource, setTriggerSource] = useState('Post-Discharge');
+
+  const toggleNeed = (id) => setSelected(prev => {
+    const next = { ...prev };
+    if (next[id] !== undefined) delete next[id]; else next[id] = 'identified';
+    return next;
+  });
+  const setSeverity = (id, sev) => setSelected(prev => ({ ...prev, [id]: sev }));
+
+  return (
+    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+      <div>
+        <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PLAN VIEW · NEEDS ASSESSMENT</div>
+        <div className="flex items-end justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold" style={{ color:'#1A2332' }}>Log Member Needs</h1>
+            <div className="text-sm mt-1" style={{ color:'#8A9BB0' }}>Margaret Chen · Age 78 · D-SNP · CM: Sarah Chen, RN · March 10, 2026</div>
+          </div>
+          <div className="text-right">
+            <div className="text-3xl font-bold" style={{ color:'#14907F' }}>{Object.keys(selected).length}</div>
+            <div className="text-xs" style={{ color:'#8A9BB0' }}>needs selected</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded shadow-sm p-4">
+        <div className="text-sm font-bold mb-1" style={{ color:'#1A2332' }}>Trigger Source</div>
+        <div className="text-xs mb-3" style={{ color:'#8A9BB0' }}>What event initiated this needs assessment?</div>
+        <div className="flex gap-2 flex-wrap">
+          {TRIGGER_OPTIONS.map(t => {
+            const key = t.replace(' Visitor','').replace(' (AWV)','');
+            const style = TRIGGER_STYLES[key] || {};
+            const isActive = triggerSource === t;
+            return (
+              <button key={t} onClick={() => setTriggerSource(t)}
+                className="px-3 py-1.5 rounded text-xs font-bold transition-colors"
+                style={{ background:isActive?(style.bg||'#D4EDE9'):'#F0F2F5',
+                  color:isActive?(style.text||'#0D7A6A'):'#4A5568',
+                  border:isActive?`1.5px solid ${style.text||'#14907F'}`:'1.5px solid transparent',
+                  cursor:'pointer' }}>
+                {style.icon && <span className="mr-1">{style.icon}</span>}{t}
+              </button>
+            );
+          })}
+        </div>
+        {triggerSource && (
+          <div className="mt-3 text-xs px-3 py-1.5 rounded" style={{ background:'#E8F5F1', color:'#0D7A6A' }}>
+            Selected: <strong>{triggerSource}</strong> — Anchor will map identified needs to eligible benefits across all applicable payers.
+          </div>
+        )}
+      </div>
+
+      <div className="text-sm font-bold" style={{ color:'#1A2332' }}>IDENTIFY MEMBER NEEDS</div>
+      <div className="grid grid-cols-3 gap-3">
+        {NEED_DEFS.map(f => {
+          const isSelected = selected[f.id] !== undefined;
+          return (
+            <div key={f.id} className="rounded p-3 cursor-pointer transition-colors"
+              style={{ background:isSelected?'#D4EDE9':'#FFFFFF', border:`1px solid ${isSelected?'#14907F':'#E2E8EF'}` }}
+              onClick={() => toggleNeed(f.id)}>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold flex-shrink-0"
+                  style={{ background:isSelected?'#14907F':'#E2E8EF', color:isSelected?'#FFFFFF':'#8A9BB0' }}>
+                  {isSelected ? '✓' : ''}
+                </div>
+                <span className="text-sm font-bold" style={{ color:isSelected?'#0D7A6A':'#1A2332' }}>{f.label}</span>
+              </div>
+              <div className="text-xs mb-2 ml-8" style={{ color:isSelected?'#0D7A6A':'#8A9BB0' }}>{f.desc}</div>
+              {isSelected && (
+                <div className="flex gap-1 ml-1" onClick={e => e.stopPropagation()}>
+                  {SEVERITIES.map(sev => (
+                    <button key={sev} onClick={() => setSeverity(f.id, sev)}
+                      className="flex-1 text-center text-xs py-0.5 rounded transition-colors"
+                      style={{ background:selected[f.id]===sev?'#14907F':'#E2E8EF',
+                        color:selected[f.id]===sev?'#FFFFFF':'#8A9BB0', border:'none', cursor:'pointer' }}>
+                      {sev}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="bg-white rounded shadow-sm px-4 py-3 flex items-center justify-between">
+        <button className="text-sm" style={{ color:'#8A9BB0', background:'none', border:'none', cursor:'pointer' }}>Cancel</button>
+        <div className="flex gap-2">
+          <button className="px-4 py-2 rounded text-sm" style={{ background:'#F0F2F5', color:'#4A5568', border:'none', cursor:'pointer' }}>Save Draft</button>
+          <button className="px-4 py-2 rounded text-sm font-bold text-white" style={{ background:'#14907F', border:'none', cursor:'pointer' }}>
+            Submit ({Object.keys(selected).length}) →
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded shadow-sm p-4">
+        <div className="text-sm font-bold mb-2" style={{ color:'#1A2332' }}>Care Manager Notes (optional)</div>
+        <textarea rows={3} className="w-full text-sm rounded p-2 resize-none outline-none"
+          style={{ background:'#F7F9FB', border:'1px solid #E2E8EF', color:'#8A9BB0' }}
+          placeholder="Observations, discharge summary details, ED visit context, follow-up instructions..." />
+      </div>
+      <footer className="text-center text-xs" style={{ color:'#8A9BB0' }}>ANCHOR · MVP Platform Mockup · anchorcare.ai · CONFIDENTIAL</footer>
+    </div>
+  );
+}
+
+/* ── SCREEN 4: PANEL OVERVIEW (trigger-agnostic) ── */
+const activationData = [
+  { label:'Incontinence Supplies', count:'82/110', pct:75 },
+  { label:'Fall Prevention',       count:'64/95',  pct:67 },
+  { label:'Home-Delivered Meals',  count:'41/72',  pct:57 },
+  { label:'Transportation',        count:'56/68',  pct:82 },
+  { label:'DME / Mobility',        count:'41/52',  pct:79 },
+];
+const openGaps = [
+  { name:'E. Rodriguez', need:'Fall risk',       trigger:'Post-Discharge', days:'5d open', urgency:'#C0392B' },
+  { name:'M. Thompson',  need:'Incontinence',    trigger:'CM Interaction', days:'3d open', urgency:'#F5A623' },
+  { name:'H. Patel',     need:'Food insecurity', trigger:'ED Frequent',    days:'7d open', urgency:'#C0392B' },
+  { name:'L. Washington',need:'Mobility',        trigger:'HRA Flag',       days:'2d open', urgency:'#F5A623' },
+  { name:'A. Diaz',      need:'Vision/Hearing',  trigger:'Annual Wellness',days:'6d open', urgency:'#C0392B' },
+];
+
+function PanelOverview() {
+  return (
+    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+      <div>
+        <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PLAN VIEW · PANEL OVERVIEW</div>
+        <h1 className="text-2xl font-semibold" style={{ color:'#1A2332' }}>Panel-Level Activation &amp; Gap Reporting</h1>
+        <div className="text-sm mt-1" style={{ color:'#8A9BB0' }}>All trigger types · March 2026</div>
+      </div>
+
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="Active Members"      value="142"  sub="needs-triggered"    valueColor="#14907F" />
+        <StatCard label="Needs Identified"    value="387"  sub="avg 2.7/member"     valueColor="#1A2332" />
+        <StatCard label="Benefits Fulfilled"  value="284"  sub="73% activation"     valueColor="#1D7A5F" />
+        <StatCard label="Avg Days to Fulfill" value="3.2d" sub="↓ from 14d"        valueColor="#14907F" />
+      </div>
+
+      <div className="bg-white rounded shadow-sm p-4">
+        <h3 className="text-sm font-bold mb-3" style={{ color:'#1A2332' }}>Trigger Source Breakdown</h3>
+        <div className="grid grid-cols-5 gap-3">
+          {[
+            { label:'Post-Discharge', count:38, pct:27, t:'Post-Discharge' },
+            { label:'ED Frequent',    count:21, pct:15, t:'ED Frequent'    },
+            { label:'CM Interaction', count:44, pct:31, t:'CM Interaction' },
+            { label:'Annual Wellness',count:29, pct:20, t:'Annual Wellness'},
+            { label:'HRA Flag',       count:10, pct:7,  t:'HRA Flag'       },
+          ].map(d => {
+            const ts = TRIGGER_STYLES[d.t] || {};
+            return (
+              <div key={d.label} className="rounded p-3 text-center" style={{ background:ts.bg||'#F0F2F5' }}>
+                <div className="text-xl font-bold" style={{ color:ts.text||'#4A5568' }}>{d.count}</div>
+                <div className="text-xs font-bold mt-0.5" style={{ color:ts.text||'#4A5568' }}>{d.label}</div>
+                <div className="text-xs mt-0.5" style={{ color:ts.text||'#8A9BB0' }}>{d.pct}%</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white rounded shadow-sm p-4">
+          <h3 className="text-sm font-bold mb-4" style={{ color:'#1A2332' }}>Activation by Benefit Type</h3>
+          <div className="flex flex-col gap-4">
+            {activationData.map(d => (
+              <div key={d.label}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm" style={{ color:'#4A5568' }}>{d.label}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold" style={{ color:'#1A2332' }}>{d.count}</span>
+                    <span className="text-sm font-bold" style={{ color:'#14907F' }}>{d.pct}%</span>
+                  </div>
+                </div>
+                <div className="h-1.5 rounded-full w-full" style={{ background:'#E2E8EF' }}>
+                  <div className="h-1.5 rounded-full" style={{ background:'#14907F', width:`${d.pct}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded shadow-sm p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold" style={{ color:'#C0392B' }}>Open Gaps — Action Required</h3>
+            <span className="px-2 py-0.5 rounded text-xs font-bold" style={{ background:'#FDECEA', color:'#C0392B' }}>5 open</span>
+          </div>
+          <div className="flex flex-col gap-3">
+            {openGaps.map(g => (
+              <div key={g.name} className="flex items-center justify-between py-2 border-b" style={{ borderColor:'#E2E8EF' }}>
+                <span className="text-sm font-bold" style={{ color:'#1A2332' }}>{g.name}</span>
+                <div>
+                  <div className="text-xs mb-0.5" style={{ color:'#4A5568' }}>{g.need}</div>
+                  <TriggerBadge trigger={g.trigger} />
+                </div>
+                <span className="text-sm font-bold" style={{ color:g.urgency }}>{g.days}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded px-4 py-3 text-sm text-white" style={{ background:'#1A2332' }}>
+        Care managers see what's working across all trigger types — and where gaps remain, regardless of how the need was surfaced.
+      </div>
+    </div>
+  );
+}
+
+/* ── SCREEN 5: PLAN DASHBOARD ── */
+const barData = [8, 14, 18, 16, 21, 25, 23, 28, 27, 23, 31, 41];
+const complianceItems = [
+  { label:'HCBS Timeliness Documentation',   status:'Complete'  },
+  { label:'ILOS Cap Tracking (5% limit)',    status:'On Track'  },
+  { label:'Encounter Data Completeness',     status:'On Track'  },
+  { label:'SSBCI Utilization Reporting',     status:'Attention' },
+  { label:'Supplemental Benefit Audit Trail',status:'On Track'  },
+];
+
+function PlanDashboard() {
+  const maxBar = Math.max(...barData);
+  return (
+    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+      <div>
+        <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PLAN VIEW · EXECUTIVE DASHBOARD</div>
+        <h1 className="text-2xl font-semibold" style={{ color:'#1A2332' }}>Execution Governance at Population Scale</h1>
+        <div className="text-sm mt-1" style={{ color:'#8A9BB0' }}>SCAN H0562 · Regal/Heritage IPA · Pilot Cohort · Q1 2026</div>
+      </div>
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="Benefit Activation Rate" value="72%"   sub="↑ 20% of identified needs" valueColor="#14907F" />
+        <StatCard label="Trigger-to-Fulfill"       value="3.2d"  sub="↓ 28%"                    valueColor="#1D7A5F" />
+        <StatCard label="Cross-Payer Events"        value="78%"   sub="multi-payer sequencing"   valueColor="#14907F" />
+        <StatCard label="Governed Spend"            value="$2.1M" sub="YTD tracked"               valueColor="#1A2332" />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white rounded shadow-sm p-4">
+          <h3 className="text-sm font-bold mb-1" style={{ color:'#1A2332' }}>Weekly Benefit Activations — Pilot Period</h3>
+          <div className="text-xs mb-4" style={{ color:'#8A9BB0' }}>All trigger types · Jan–Mar 2026</div>
+          <div className="flex items-end gap-1 h-40 px-2">
+            {barData.map((v, i) => {
+              const isLast = i === barData.length - 1;
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center justify-end gap-0.5">
+                  {isLast && <span className="text-xs font-bold" style={{ color:'#14907F' }}>41</span>}
+                  <div className="w-full rounded-t" style={{ height:`${(v/maxBar)*100}%`, background:isLast?'#14907F':'#D4EDE9' }} />
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex justify-between mt-1 px-2">
+            {['Jan 6','Feb 3','Mar 3'].map(l => (
+              <span key={l} className="text-xs" style={{ color:'#8A9BB0' }}>{l}</span>
+            ))}
+          </div>
+        </div>
+        <div className="bg-white rounded shadow-sm p-4">
+          <h3 className="text-sm font-bold mb-4" style={{ color:'#1A2332' }}>CMS Compliance Readiness</h3>
+          <div className="flex flex-col gap-3">
+            {complianceItems.map(c => (
+              <div key={c.label} className="flex items-center justify-between py-2 border-b" style={{ borderColor:'#E2E8EF' }}>
+                <span className="text-sm" style={{ color:'#4A5568' }}>{c.label}</span>
+                <StatusBadge status={c.status} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── SCREEN 6: ACTIVATION LOG (trigger column added) ── */
+const activations = [
+  { date:'Mar 10', member:'Chen, M',     benefit:'Incontinence Supplies',   payer:'Medicare Part B',   amount:'$0/$1,200',    vendor:'Comfort Medical',   status:'Initiated',    trigger:'Post-Discharge'  },
+  { date:'Mar 10', member:'Chen, M',     benefit:'Fall Prevention Kit',      payer:'Plan Supplemental', amount:'$180/$500',    vendor:'SafeStep Solutions', status:'Initiated',   trigger:'Post-Discharge'  },
+  { date:'Mar 9',  member:'Williams, R', benefit:'Transportation',           payer:'Plan Supplemental', amount:'6 rides',      vendor:'RideHealth',         status:'Fulfilled',   trigger:'ED Frequent'     },
+  { date:'Mar 9',  member:'Jackson, D',  benefit:'Home-Delivered Meals',    payer:'Medicaid LTSS',     amount:'Auth pending',  vendor:"Mom's Meals",        status:'Pending Auth',trigger:'CM Interaction'  },
+  { date:'Mar 8',  member:'Liu, J',      benefit:'Incontinence Supplies',   payer:'Medicare Part B',   amount:'$340/$1,200',  vendor:'Comfort Medical',    status:'Fulfilled',   trigger:'Annual Wellness' },
+  { date:'Mar 7',  member:'Reyes, E',    benefit:'Personal Care Aide',      payer:'Medicaid LTSS',     amount:'Auth pending',  vendor:'CareLinx',           status:'Pending Auth',trigger:'HRA Flag'        },
+  { date:'Mar 6',  member:'Patel, H',    benefit:'Home-Delivered Meals',    payer:'Plan Supplemental', amount:'$240/$600',    vendor:'Magic Kitchen',      status:'Fulfilled',   trigger:'ED Frequent'     },
+  { date:'Mar 5',  member:'Thompson, M', benefit:'DME — Rollator Walker',   payer:'Medicare Part B',   amount:'$0/$600',      vendor:'Natl Home Health',   status:'Initiated',   trigger:'CM Interaction'  },
+];
+const LOG_TABS = ['All (8)','Initiated (3)','Fulfilled (3)','Pending Auth (2)'];
+const LOG_FILTER = { 'All (8)':null,'Initiated (3)':'Initiated','Fulfilled (3)':'Fulfilled','Pending Auth (2)':'Pending Auth' };
+
+function ActivationLog() {
+  const [activeTab, setActiveTab] = useState('All (8)');
+  const filter = LOG_FILTER[activeTab];
+  const rows = filter ? activations.filter(a => a.status === filter) : activations;
+  return (
+    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PLAN VIEW · MEMBER ACTIVATION RECORD</div>
+          <h1 className="text-2xl font-semibold" style={{ color:'#1A2332' }}>Activation Log — Audit Trail</h1>
+          <div className="text-sm mt-1" style={{ color:'#8A9BB0' }}>8 records · Pilot period · All trigger types · All care managers</div>
+        </div>
+        <div className="flex gap-2">
+          <button className="px-3 py-1.5 rounded text-sm" style={{ background:'#F0F2F5', color:'#4A5568', border:'none', cursor:'pointer' }}>Export CSV</button>
+          <button className="px-3 py-1.5 rounded text-sm font-bold border" style={{ background:'#FFFFFF', color:'#14907F', borderColor:'#14907F', cursor:'pointer' }}>Export CMS</button>
+        </div>
+      </div>
+      <div className="flex gap-0">
+        {LOG_TABS.map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab)}
+            className="px-4 py-1.5 text-sm transition-colors"
+            style={{ background:activeTab===tab?'#1A2332':'#F0F2F5', color:activeTab===tab?'#FFFFFF':'#4A5568',
+              fontWeight:activeTab===tab?'bold':'normal', border:'none', cursor:'pointer',
+              borderRadius:'4px 4px 0 0', marginRight:'2px' }}>{tab}
+          </button>
+        ))}
+      </div>
+      <div className="bg-white rounded shadow-sm overflow-hidden">
+        <div className="grid text-xs font-bold px-4 py-2"
+          style={{ background:'#F0F2F5', color:'#8A9BB0',
+            gridTemplateColumns:'60px 100px 1.4fr 1.1fr 85px 1fr 110px 110px' }}>
+          <span>Date</span><span>Member</span><span>Benefit</span><span>Payer</span>
+          <span>Amount</span><span>Vendor</span><span>Trigger</span><span>Status</span>
+        </div>
+        {rows.map((r, i) => (
+          <div key={i} className="grid items-center px-4 py-2 border-t"
+            style={{ borderColor:'#E2E8EF', background:i%2===1?'#F7F9FB':'#FFFFFF',
+              gridTemplateColumns:'60px 100px 1.4fr 1.1fr 85px 1fr 110px 110px' }}>
+            <span className="text-xs" style={{ color:'#4A5568' }}>{r.date}</span>
+            <span className="text-sm font-bold" style={{ color:'#1A2332' }}>{r.member}</span>
+            <span className="text-xs" style={{ color:'#4A5568' }}>{r.benefit}</span>
+            <span className="text-xs" style={{ color:'#4A5568' }}>{r.payer}</span>
+            <span className="text-xs" style={{ color:'#4A5568' }}>{r.amount}</span>
+            <span className="text-xs" style={{ color:'#4A5568' }}>{r.vendor}</span>
+            <TriggerBadge trigger={r.trigger} />
+            <StatusBadge status={r.status} />
+          </div>
+        ))}
+      </div>
+      <div className="rounded px-4 py-2 text-xs" style={{ background:'#D4EDE9', color:'#0D7A6A', borderLeft:'4px solid #14907F' }}>
+        All documentation generated automatically at point of activation — regardless of trigger source. No manual reconciliation. CMS audit trail is a byproduct of governed execution.
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   SCREEN A: BENEFIT SEQUENCING ENGINE
+   Shows payer-of-first-resort logic: Medicaid LTSS → SSBCI → CBO/Community
+   ══════════════════════════════════════════════════════ */
+
+const SEQ_MEMBER = {
+  name: 'Margaret Chen', age: 78, id: 'D-4821', plan: 'SCAN H0562',
+  aidCode: '14H', dualStatus: 'Full Dual', trigger: 'Post-Discharge',
+  triggerDetail: 'DC from St. Joseph\'s — CHF — Mar 8, 2026',
+};
+
+const PAYER_STACK = [
+  { id:'medicaid', tier:1, label:'Medicaid LTSS / HCBS', sublabel:'California Medi-Cal · Aid Code 14H · HCBS Waiver Active', color:'#6D28D9', bg:'#EDE9FE', border:'#6D28D9' },
+  { id:'ssbci',    tier:2, label:'SSBCI (Plan Supplemental)', sublabel:'SCAN H0562 · Special Supplemental Benefits for Chronically Ill', color:'#14907F', bg:'#D4EDE9', border:'#14907F' },
+  { id:'cbo',      tier:3, label:'CBO / Community Resource', sublabel:'Area Agency on Aging · Meals on Wheels · RideHealth Network', color:'#1D4ED8', bg:'#DBEAFE', border:'#1D4ED8' },
+];
+
+const SEQ_BENEFITS = [
+  {
+    need: 'Personal Care Aide',
+    icon: '🧑‍⚕️',
+    decision: 'medicaid',
+    reasoning: 'Aid Code 14H authorizes 4 hrs/day personal care. Waiver slot confirmed active. Medicaid pays first — SSBCI budget fully protected.',
+    steps: [
+      { payer:'Medicaid LTSS', result:'COVERS', detail:'4 hrs/day authorized · Aid Code 14H · Waiver active', status:'approved', cost:'$0 to plan' },
+      { payer:'SSBCI',         result:'NOT NEEDED', detail:'Medicaid covers full need — SSBCI budget preserved', status:'bypassed', cost:'—' },
+      { payer:'CBO/Community', result:'NOT NEEDED', detail:'Formal care required — CBO not applicable', status:'bypassed', cost:'—' },
+    ],
+    ilosImpact: '$0', ilosSource: 'Medicaid',
+  },
+  {
+    need: 'Home-Delivered Meals',
+    icon: '🍱',
+    decision: 'cbo',
+    reasoning: 'Medicaid LTSS does not cover nutrition for this aid code. CBO (Meals on Wheels) available in zip 90210 — $0 cost before touching SSBCI budget.',
+    steps: [
+      { payer:'Medicaid LTSS', result:'NOT COVERED', detail:'Nutrition not covered under aid code 14H HCBS waiver', status:'declined', cost:'—' },
+      { payer:'CBO/Community', result:'COVERS', detail:'Meals on Wheels · 7 meals/week · ZIP 90210 confirmed delivery zone', status:'approved', cost:'$0 to plan' },
+      { payer:'SSBCI',         result:'NOT NEEDED', detail:'CBO fulfills need — SSBCI budget preserved', status:'bypassed', cost:'—' },
+    ],
+    ilosImpact: '$0', ilosSource: 'CBO',
+  },
+  {
+    need: 'Non-Emergency Transportation',
+    icon: '🚗',
+    decision: 'ssbci',
+    reasoning: 'Medicaid NEMT does not cover social/wellness trips. No CBO coverage in service area. SSBCI ride benefit activated — counts toward ILOS cap.',
+    steps: [
+      { payer:'Medicaid LTSS', result:'NOT COVERED', detail:'Medicaid NEMT limited to medical appointments only', status:'declined', cost:'—' },
+      { payer:'CBO/Community', result:'PARTIAL',     detail:'RideHealth available but limited to 2 rides/mo in this county', status:'partial', cost:'—' },
+      { payer:'SSBCI',         result:'COVERS',      detail:'Plan ride benefit · up to 24 rides/yr · $0 copay member', status:'approved', cost:'$480 vs. $840 cap' },
+    ],
+    ilosImpact: '$480', ilosSource: 'SSBCI',
+  },
+];
+
+const STEP_STYLES = {
+  approved:  { bg:'#D4EDE9', text:'#0D7A6A', label:'✓ COVERS'      },
+  bypassed:  { bg:'#F0F2F5', text:'#8A9BB0', label:'— BYPASSED'    },
+  declined:  { bg:'#FDECEA', text:'#C0392B', label:'✗ NOT COVERED' },
+  partial:   { bg:'#FEF3DC', text:'#B45309', label:'~ PARTIAL'      },
+};
+
+function BenefitSequencing() {
+  const [expanded, setExpanded] = useState('Personal Care Aide');
+  return (
+    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PLAN VIEW · BENEFIT SEQUENCING ENGINE</div>
+          <h1 className="text-2xl font-bold" style={{ color:'#0B1D3A' }}>Payer-of-First-Resort Determination</h1>
+          <div className="text-sm mt-1" style={{ color:'#8A9BB0' }}>Anchor-governed sequencing across Medicaid LTSS · SSBCI · CBO/Community</div>
+        </div>
+      </div>
+
+      {/* Member context bar */}
+      <div className="bg-white rounded shadow-sm p-4 flex items-center gap-4 flex-wrap">
+        <Avatar initials="MC" size="lg" />
+        <div className="flex-1">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className="text-base font-bold" style={{ color:'#1A2332' }}>{SEQ_MEMBER.name}</span>
+            <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ background:'#EDE9FE', color:'#6D28D9' }}>Full Dual · Aid Code {SEQ_MEMBER.aidCode}</span>
+            <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ background:'#D4EDE9', color:'#0D7A6A' }}>HCBS Waiver Active</span>
+            <TriggerBadge trigger={SEQ_MEMBER.trigger} />
+          </div>
+          <div className="text-xs" style={{ color:'#8A9BB0' }}>MRN {SEQ_MEMBER.id} · {SEQ_MEMBER.plan} · {SEQ_MEMBER.triggerDetail}</div>
+        </div>
+        <div className="flex gap-3">
+          <div className="text-center">
+            <div className="text-xl font-bold" style={{ color:'#0D7A6A' }}>$0</div>
+            <div className="text-xs" style={{ color:'#8A9BB0' }}>SSBCI used<br/>this trigger</div>
+          </div>
+          <div className="w-px" style={{ background:'#E2E8EF' }} />
+          <div className="text-center">
+            <div className="text-xl font-bold" style={{ color:'#14907F' }}>2/3</div>
+            <div className="text-xs" style={{ color:'#8A9BB0' }}>needs covered<br/>by Medicaid/CBO</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Payer stack legend */}
+      <div className="grid grid-cols-3 gap-3">
+        {PAYER_STACK.map(p => (
+          <div key={p.id} className="rounded p-3 flex items-start gap-3"
+            style={{ background: p.bg, borderLeft:`4px solid ${p.border}` }}>
+            <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+              style={{ background: p.color }}>{p.tier}</div>
+            <div>
+              <div className="text-sm font-bold" style={{ color: p.color }}>{p.label}</div>
+              <div className="text-xs mt-0.5" style={{ color: p.color, opacity:0.8 }}>{p.sublabel}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Sequencing decisions */}
+      <div className="text-sm font-bold" style={{ color:'#1A2332' }}>SEQUENCING DECISIONS — POST-DISCHARGE TRIGGER</div>
+      {SEQ_BENEFITS.map(b => {
+        const isOpen = expanded === b.need;
+        const decidedPayer = PAYER_STACK.find(p => p.id === b.decision);
+        return (
+          <div key={b.need} className="bg-white rounded shadow-sm overflow-hidden">
+            {/* Header row */}
+            <div className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50"
+              onClick={() => setExpanded(isOpen ? null : b.need)}
+              style={{ borderBottom: isOpen ? '1px solid #E2E8EF' : 'none' }}>
+              <div className="flex items-center gap-3">
+                <span className="text-lg">{b.icon}</span>
+                <div>
+                  <div className="text-sm font-bold" style={{ color:'#1A2332' }}>{b.need}</div>
+                  <div className="text-xs mt-0.5" style={{ color:'#8A9BB0' }}>{b.reasoning.substring(0,72)}…</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <div className="text-right">
+                  <div className="text-xs font-bold" style={{ color: decidedPayer?.color }}>{decidedPayer?.label}</div>
+                  <div className="text-xs" style={{ color:'#8A9BB0' }}>ILOS: {b.ilosImpact}</div>
+                </div>
+                <span style={{ color:'#8A9BB0' }}>{isOpen ? '▲' : '▼'}</span>
+              </div>
+            </div>
+            {/* Expanded sequencing steps */}
+            {isOpen && (
+              <div className="px-4 py-3 flex flex-col gap-3">
+                <div className="text-xs italic" style={{ color:'#4A5568' }}>{b.reasoning}</div>
+                <div className="grid grid-cols-3 gap-3 mt-1">
+                  {b.steps.map((step, i) => {
+                    const ss = STEP_STYLES[step.status] || STEP_STYLES.bypassed;
+                    const stackItem = PAYER_STACK[i];
+                    return (
+                      <div key={i} className="rounded p-3" style={{ background: ss.bg, border:`1px solid ${stackItem?.border||'#E2E8EF'}` }}>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="w-4 h-4 rounded-full text-xs flex items-center justify-center text-white font-bold flex-shrink-0"
+                            style={{ background: stackItem?.color || '#8A9BB0' }}>{i+1}</span>
+                          <span className="text-xs font-bold" style={{ color: stackItem?.color || '#4A5568' }}>{step.payer}</span>
+                        </div>
+                        <div className="text-xs font-bold mb-1" style={{ color: ss.text }}>{ss.label}</div>
+                        <div className="text-xs" style={{ color:'#4A5568' }}>{step.detail}</div>
+                        <div className="text-xs font-bold mt-1.5" style={{ color: ss.text }}>{step.cost}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      <div className="rounded px-4 py-2 text-xs" style={{ background:'#D4EDE9', color:'#0D7A6A', borderLeft:'4px solid #14907F' }}>
+        Anchor sequences every need through the full payer stack before touching SSBCI. The documentation of each decision is the compliance artifact — no separate reconciliation required.
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   SCREEN B: MEMBER COVERAGE STACK
+   Single-member view of all coverage layers, caps, and YTD utilization
+   ══════════════════════════════════════════════════════ */
+
+const COV_LAYERS = [
+  {
+    id:'medicaid', tier:1, label:'Medicaid LTSS / HCBS', sublabel:'California Medi-Cal · Aid Code 14H',
+    color:'#6D28D9', bg:'#EDE9FE', border:'#6D28D9',
+    status:'Active', statusNote:'HCBS Waiver slot confirmed · Auth expires 12/31/2026',
+    benefits: [
+      { name:'Personal Care Aide',        cap:'4 hrs/day · 28 hrs/wk', used:'112 hrs YTD', pct:38, authStatus:'Authorized', authExp:'Dec 31 2026' },
+      { name:'Non-Medical Transportation', cap:'State-covered medical trips', used:'8 trips YTD', pct:null, authStatus:'Active', authExp:'Ongoing' },
+      { name:'Adult Day Health Care',     cap:'Up to 5 days/wk per plan of care', used:'Not initiated', pct:0, authStatus:'Not Started', authExp:'—' },
+    ],
+  },
+  {
+    id:'ssbci', tier:2, label:'SSBCI — Plan Supplemental Benefits',
+    sublabel:'SCAN H0562 · Special Supplemental Benefits for Chronically Ill',
+    color:'#14907F', bg:'#D4EDE9', border:'#14907F',
+    status:'Active', statusNote:'ILOS cap: $1,650/yr · YTD: $480 used · $1,170 remaining',
+    benefits: [
+      { name:'Non-Emergency Transportation', cap:'24 rides/yr · $840 budget', used:'$480 · 12 rides', pct:57, authStatus:'Active', authExp:'Dec 31 2026' },
+      { name:'Home-Delivered Meals (flex)',  cap:'$600/yr supplemental', used:'$0 YTD',     pct:0,  authStatus:'Not Used', authExp:'Dec 31 2026' },
+      { name:'Home Safety Modifications',   cap:'$500/yr',               used:'$0 YTD',     pct:0,  authStatus:'Not Used', authExp:'Dec 31 2026' },
+      { name:'In-Home Support (SSBCI)',      cap:'$1,200/yr · hours-based', used:'$0 YTD',   pct:0,  authStatus:'Not Used', authExp:'Dec 31 2026' },
+    ],
+  },
+  {
+    id:'cbo', tier:3, label:'CBO / Community Resources',
+    sublabel:'AAA · Meals on Wheels · RideHealth · Local CBO Network',
+    color:'#1D4ED8', bg:'#DBEAFE', border:'#1D4ED8',
+    status:'Active', statusNote:'$0 cost to plan — CBO fulfillment does not count toward ILOS cap',
+    benefits: [
+      { name:'Meals on Wheels',       cap:'7 meals/wk · ZIP confirmed', used:'Active · 28 meals delivered', pct:null, authStatus:'Enrolled', authExp:'Ongoing' },
+      { name:'AAA Care Coordination', cap:'Case mgmt available',         used:'Not yet enrolled',            pct:null, authStatus:'Eligible', authExp:'—' },
+      { name:'Friendly Visitor',      cap:'Social isolation program',    used:'Not yet enrolled',            pct:null, authStatus:'Eligible', authExp:'—' },
+    ],
+  },
+];
+
+function CoverageStack() {
+  const [openLayer, setOpenLayer] = useState('medicaid');
+  return (
+    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PLAN VIEW · MEMBER COVERAGE STACK</div>
+          <h1 className="text-2xl font-bold" style={{ color:'#0B1D3A' }}>Coverage Layers &amp; Cap Utilization</h1>
+          <div className="text-sm mt-1" style={{ color:'#8A9BB0' }}>All active coverage sources · Medicaid LTSS · SSBCI · CBO/Community</div>
+        </div>
+      </div>
+
+      {/* Member header */}
+      <div className="bg-white rounded shadow-sm p-4 flex items-center gap-4 flex-wrap">
+        <Avatar initials="MC" size="lg" />
+        <div className="flex-1">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className="text-base font-bold" style={{ color:'#1A2332' }}>Margaret Chen</span>
+            <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ background:'#EDE9FE', color:'#6D28D9' }}>Full Dual · Aid Code 14H</span>
+            <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ background:'#D4EDE9', color:'#0D7A6A' }}>HCBS Waiver Active</span>
+            <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ background:'#DBEAFE', color:'#1D4ED8' }}>SCAN H0562</span>
+          </div>
+          <div className="text-xs" style={{ color:'#8A9BB0' }}>MRN D-4821 · Age 78 · California Medi-Cal · ILOS Cap: $1,650/yr</div>
+        </div>
+        <div className="flex gap-4">
+          <div className="text-center px-3">
+            <div className="text-xl font-bold" style={{ color:'#6D28D9' }}>$0</div>
+            <div className="text-xs" style={{ color:'#8A9BB0' }}>Medicaid cost<br/>to plan</div>
+          </div>
+          <div className="w-px" style={{ background:'#E2E8EF' }} />
+          <div className="text-center px-3">
+            <div className="text-xl font-bold" style={{ color:'#14907F' }}>$480</div>
+            <div className="text-xs" style={{ color:'#8A9BB0' }}>SSBCI used<br/>of $1,650 cap</div>
+          </div>
+          <div className="w-px" style={{ background:'#E2E8EF' }} />
+          <div className="text-center px-3">
+            <div className="text-xl font-bold" style={{ color:'#1D4ED8' }}>$0</div>
+            <div className="text-xs" style={{ color:'#8A9BB0' }}>CBO cost<br/>to plan</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ILOS summary bar */}
+      <div className="bg-white rounded shadow-sm p-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-bold" style={{ color:'#1A2332' }}>ILOS Cap Utilization — This Member</span>
+          <span className="text-xs font-bold" style={{ color:'#14907F' }}>$480 of $1,650 · 29% used</span>
+        </div>
+        <div className="h-3 rounded-full w-full" style={{ background:'#E2E8EF' }}>
+          <div className="h-3 rounded-full" style={{ background:'#14907F', width:'29%' }} />
+        </div>
+        <div className="flex justify-between mt-1 text-xs" style={{ color:'#8A9BB0' }}>
+          <span>$0</span><span>$825 (50%)</span><span>$1,485 (90% — alert threshold)</span><span>$1,650 cap</span>
+        </div>
+        <div className="mt-2 text-xs" style={{ color:'#8A9BB0' }}>
+          SSBCI spend only — Medicaid LTSS and CBO fulfillment do not count toward this member's ILOS cap.
+        </div>
+      </div>
+
+      {/* Layer accordions */}
+      {COV_LAYERS.map(layer => {
+        const isOpen = openLayer === layer.id;
+        return (
+          <div key={layer.id} className="bg-white rounded shadow-sm overflow-hidden"
+            style={{ borderLeft:`4px solid ${layer.border}` }}>
+            <div className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50"
+              onClick={() => setOpenLayer(isOpen ? null : layer.id)}
+              style={{ borderBottom: isOpen ? '1px solid #E2E8EF' : 'none' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                  style={{ background: layer.color }}>{layer.tier}</div>
+                <div>
+                  <div className="text-sm font-bold" style={{ color: layer.color }}>{layer.label}</div>
+                  <div className="text-xs mt-0.5" style={{ color:'#8A9BB0' }}>{layer.sublabel}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <div className="text-right">
+                  <span className="text-xs font-bold" style={{ color: layer.color }}>{layer.status}</span>
+                  <div className="text-xs" style={{ color:'#8A9BB0' }}>{layer.statusNote}</div>
+                </div>
+                <span style={{ color:'#8A9BB0' }}>{isOpen ? '▲' : '▼'}</span>
+              </div>
+            </div>
+            {isOpen && (
+              <div className="px-4 py-3">
+                <div className="grid text-xs font-bold px-2 py-1 mb-1"
+                  style={{ background:'#F0F2F5', color:'#8A9BB0',
+                    gridTemplateColumns:'2fr 1.5fr 1.5fr 100px 100px' }}>
+                  <span>BENEFIT</span><span>CAP / LIMIT</span><span>YTD UTILIZATION</span><span>AUTH STATUS</span><span>AUTH EXP</span>
+                </div>
+                {layer.benefits.map((b, i) => (
+                  <div key={i} className="grid items-center px-2 py-2 border-t"
+                    style={{ borderColor:'#E2E8EF', gridTemplateColumns:'2fr 1.5fr 1.5fr 100px 100px' }}>
+                    <span className="text-sm font-bold" style={{ color:'#1A2332' }}>{b.name}</span>
+                    <span className="text-xs" style={{ color:'#4A5568' }}>{b.cap}</span>
+                    <div>
+                      <span className="text-xs" style={{ color:'#4A5568' }}>{b.used}</span>
+                      {b.pct !== null && b.pct > 0 && (
+                        <div className="h-1 rounded-full mt-1 w-32" style={{ background:'#E2E8EF' }}>
+                          <div className="h-1 rounded-full" style={{ width:`${b.pct}%`,
+                            background: b.pct > 80 ? '#C0392B' : b.pct > 60 ? '#F5A623' : layer.color }} />
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-xs font-bold" style={{
+                      color: b.authStatus === 'Authorized' || b.authStatus === 'Active' || b.authStatus === 'Enrolled' ? '#0D7A6A'
+                           : b.authStatus === 'Not Started' || b.authStatus === 'Not Used' || b.authStatus === 'Eligible' ? '#8A9BB0'
+                           : '#B45309' }}>
+                      {b.authStatus}
+                    </span>
+                    <span className="text-xs" style={{ color:'#8A9BB0' }}>{b.authExp}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      <div className="rounded px-4 py-2 text-xs" style={{ background:'#D4EDE9', color:'#0D7A6A', borderLeft:'4px solid #14907F' }}>
+        Anchor maintains a live coverage stack for every member — Medicaid authorization status, SSBCI cap utilization, and CBO enrollment — updated at each triggered interaction.
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   SCREEN C: ILOS / CAP TRACKER
+   Population-level SSBCI spend vs. 5% ILOS cap, by benefit category and payer source
+   ══════════════════════════════════════════════════════ */
+
+const ILOS_CATEGORIES = [
+  { label:'Non-Emergency Transportation', ssbci:42800, medicaid:0,   cbo:0,     budget:72000, alert:false },
+  { label:'In-Home Support Services',     ssbci:38200, medicaid:91400,cbo:0,    budget:110000,alert:false },
+  { label:'Home-Delivered Meals',         ssbci:8400,  medicaid:0,   cbo:24600, budget:48000, alert:false },
+  { label:'Home Safety Modifications',    ssbci:22100, medicaid:0,   cbo:0,     budget:24000, alert:true  },
+  { label:'Personal Care Aide (SSBCI)',   ssbci:6200,  medicaid:0,   cbo:0,     budget:12000, alert:false },
+  { label:'Adult Day Services',           ssbci:4800,  medicaid:18700,cbo:2100, budget:36000, alert:false },
+];
+
+const ILOS_SUMMARY = {
+  totalSSBCI: 122500,
+  totalMedicaid: 110100,
+  totalCBO: 26700,
+  ilosCap5pct: 187000,
+  projectedYE: 168800,
+  enrolledMembers: 1240,
+};
+
+const ALERT_MEMBERS = [
+  { name:'Chen, M',     ssbci:480,  cap:1650, pct:29, trigger:'Post-Discharge', risk:'LOW'  },
+  { name:'Patel, H',    ssbci:1420, cap:1650, pct:86, trigger:'ED Frequent',    risk:'HIGH' },
+  { name:'Thompson, M', ssbci:1310, cap:1650, pct:79, trigger:'CM Interaction', risk:'HIGH' },
+  { name:'Diaz, A',     ssbci:980,  cap:1650, pct:59, trigger:'Annual Wellness',risk:'MOD'  },
+  { name:'Reyes, E',    ssbci:1180, cap:1650, pct:71, trigger:'HRA Flag',       risk:'MOD'  },
+];
+
+function fmt(n) { return n >= 1000 ? `$${(n/1000).toFixed(1)}K` : `$${n}`; }
+
+function ILOSTracker() {
+  return (
+    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PLAN VIEW · ILOS &amp; CAP TRACKER</div>
+          <h1 className="text-2xl font-bold" style={{ color:'#0B1D3A' }}>SSBCI Spend &amp; ILOS Cap Management</h1>
+          <div className="text-sm mt-1" style={{ color:'#8A9BB0' }}>SCAN H0562 · 1,240 enrolled members · YTD through March 2026</div>
+        </div>
+        <div className="flex gap-2">
+          <button className="px-3 py-1.5 rounded text-sm" style={{ background:'#F0F2F5', color:'#4A5568', border:'none', cursor:'pointer' }}>Export CMS</button>
+          <button className="px-3 py-1.5 rounded text-sm font-bold" style={{ background:'#14907F', color:'#FFFFFF', border:'none', cursor:'pointer' }}>Download Report</button>
+        </div>
+      </div>
+
+      {/* Summary stat cards */}
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="SSBCI Spend YTD"        value={fmt(ILOS_SUMMARY.totalSSBCI)}    sub="counts toward ILOS cap"                      valueColor="#14907F" />
+        <StatCard label="Medicaid LTSS Fulfilled" value={fmt(ILOS_SUMMARY.totalMedicaid)} sub="$0 ILOS impact — Medicaid pays"              valueColor="#6D28D9" />
+        <StatCard label="CBO Fulfillment"         value={fmt(ILOS_SUMMARY.totalCBO)}      sub="$0 ILOS impact — community resource"         valueColor="#1D4ED8" />
+        <StatCard label="ILOS Exposure (5% cap)"  value={fmt(ILOS_SUMMARY.ilosCap5pct)}   sub={`Projected YE: ${fmt(ILOS_SUMMARY.projectedYE)}`} valueColor="#1A2332" />
+      </div>
+
+      {/* Plan-level ILOS gauge */}
+      <div className="bg-white rounded shadow-sm p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <span className="text-sm font-bold" style={{ color:'#1A2332' }}>Plan-Level ILOS Cap Utilization</span>
+            <span className="text-xs ml-2" style={{ color:'#8A9BB0' }}>CMS 5% limit on ILOS spend as % of total plan benefit expenditure</span>
+          </div>
+          <span className="px-2 py-0.5 rounded text-xs font-bold" style={{ background:'#D4EDE9', color:'#0D7A6A' }}>ON TRACK</span>
+        </div>
+        {/* SSBCI cap bar */}
+        <div className="mb-3">
+          <div className="flex justify-between text-xs mb-1" style={{ color:'#4A5568' }}>
+            <span>SSBCI Spend YTD: {fmt(ILOS_SUMMARY.totalSSBCI)}</span>
+            <span className="font-bold" style={{ color:'#14907F' }}>65.5% of {fmt(ILOS_SUMMARY.ilosCap5pct)} cap</span>
+          </div>
+          <div className="h-4 rounded-full w-full relative" style={{ background:'#E2E8EF' }}>
+            <div className="h-4 rounded-full" style={{ width:'65.5%', background:'#14907F' }} />
+            {/* 90% alert marker */}
+            <div className="absolute top-0 bottom-0 w-0.5" style={{ left:'90%', background:'#C0392B' }} />
+            <span className="absolute text-xs font-bold" style={{ left:'90.5%', top:'-16px', color:'#C0392B' }}>90%</span>
+          </div>
+          <div className="flex justify-between mt-1 text-xs" style={{ color:'#8A9BB0' }}>
+            <span>$0</span>
+            <span>Projected YE: {fmt(ILOS_SUMMARY.projectedYE)} · 90.2% of cap</span>
+            <span>{fmt(ILOS_SUMMARY.ilosCap5pct)} cap</span>
+          </div>
+        </div>
+        {/* Payer source breakdown stacked bar */}
+        <div className="mt-3">
+          <div className="text-xs font-bold mb-2" style={{ color:'#8A9BB0' }}>BENEFIT SPEND BY PAYER SOURCE (total governed: {fmt(ILOS_SUMMARY.totalSSBCI + ILOS_SUMMARY.totalMedicaid + ILOS_SUMMARY.totalCBO)})</div>
+          <div className="flex h-5 rounded-full overflow-hidden">
+            <div style={{ width:'42%', background:'#6D28D9' }} title="Medicaid LTSS" />
+            <div style={{ width:'47%', background:'#14907F' }} title="SSBCI" />
+            <div style={{ width:'11%', background:'#1D4ED8' }} title="CBO" />
+          </div>
+          <div className="flex gap-4 mt-1.5 text-xs flex-wrap">
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background:'#6D28D9' }} />Medicaid LTSS {fmt(ILOS_SUMMARY.totalMedicaid)} (42%)</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background:'#14907F' }} />SSBCI {fmt(ILOS_SUMMARY.totalSSBCI)} (47%)</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background:'#1D4ED8' }} />CBO/Community {fmt(ILOS_SUMMARY.totalCBO)} (11%)</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Per-category spend table */}
+      <div className="bg-white rounded shadow-sm overflow-hidden">
+        <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom:'1px solid #E2E8EF' }}>
+          <span className="text-sm font-bold" style={{ color:'#1A2332' }}>SSBCI Spend by Benefit Category</span>
+          <span className="text-xs" style={{ color:'#8A9BB0' }}>All amounts count toward ILOS cap · Medicaid and CBO columns shown for context</span>
+        </div>
+        <div className="grid text-xs font-bold px-4 py-2"
+          style={{ background:'#F0F2F5', color:'#8A9BB0',
+            gridTemplateColumns:'2fr 90px 90px 90px 100px 80px' }}>
+          <span>BENEFIT CATEGORY</span>
+          <span style={{ color:'#14907F' }}>SSBCI</span>
+          <span style={{ color:'#6D28D9' }}>Medicaid</span>
+          <span style={{ color:'#1D4ED8' }}>CBO</span>
+          <span>SSBCI BUDGET</span>
+          <span>STATUS</span>
+        </div>
+        {ILOS_CATEGORIES.map((c, i) => {
+          const pct = Math.round((c.ssbci / c.budget) * 100);
+          return (
+            <div key={i} className="grid items-center px-4 py-3 border-t"
+              style={{ borderColor:'#E2E8EF', background: c.alert ? '#FFFBF0' : i%2===1 ? '#F7F9FB' : '#FFFFFF',
+                gridTemplateColumns:'2fr 90px 90px 90px 100px 80px' }}>
+              <div>
+                <span className="text-sm font-bold" style={{ color: c.alert ? '#B45309' : '#1A2332' }}>{c.label}</span>
+                {c.alert && <span className="ml-2 text-xs font-bold" style={{ color:'#C0392B' }}>⚠ Near cap</span>}
+                <div className="h-1 rounded-full mt-1 w-32" style={{ background:'#E2E8EF' }}>
+                  <div className="h-1 rounded-full" style={{ width:`${Math.min(pct,100)}%`,
+                    background: pct > 80 ? '#C0392B' : pct > 60 ? '#F5A623' : '#14907F' }} />
+                </div>
+              </div>
+              <span className="text-sm font-bold" style={{ color:'#14907F' }}>{fmt(c.ssbci)}</span>
+              <span className="text-sm" style={{ color:'#6D28D9' }}>{c.medicaid > 0 ? fmt(c.medicaid) : '—'}</span>
+              <span className="text-sm" style={{ color:'#1D4ED8' }}>{c.cbo > 0 ? fmt(c.cbo) : '—'}</span>
+              <div>
+                <span className="text-xs" style={{ color:'#4A5568' }}>{fmt(c.budget)}</span>
+                <div className="text-xs" style={{ color: pct > 80 ? '#C0392B' : '#8A9BB0' }}>{pct}% used</div>
+              </div>
+              <span className="text-xs font-bold px-2 py-0.5 rounded"
+                style={{ background: c.alert ? '#FEF3DC' : '#E8F5F1', color: c.alert ? '#B45309' : '#0D7A6A' }}>
+                {c.alert ? 'Attention' : 'On Track'}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Member-level benefit allowance exposure */}
+      <div className="bg-white rounded shadow-sm overflow-hidden">
+        <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom:'1px solid #E2E8EF' }}>
+          <span className="text-sm font-bold" style={{ color:'#1A2332' }}>Member-Level SSBCI Utilization — High Exposure</span>
+          <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ background:'#FDECEA', color:'#C0392B' }}>2 members &gt;75% of benefit allowance</span>
+        </div>
+        <div className="text-xs px-4 py-2" style={{ background:'#FEF3DC', color:'#B45309' }}>
+          Note: Per-member figures reflect spend against each member's <strong>plan-defined benefit allowance</strong> (e.g. $840/yr rides, $600/yr meals) — not a CMS ILOS cap. The ILOS 5% cap applies at the plan aggregate level only.
+        </div>
+        <div className="grid text-xs font-bold px-4 py-2"
+          style={{ background:'#F0F2F5', color:'#8A9BB0',
+            gridTemplateColumns:'120px 90px 110px 1fr 100px 70px' }}>
+          <span>MEMBER</span><span>SSBCI YTD</span><span>BENEFIT ALLOWANCE</span><span>UTILIZATION</span><span>TRIGGER</span><span>RISK</span>
+        </div>
+        {ALERT_MEMBERS.map((m, i) => (
+          <div key={i} className="grid items-center px-4 py-2 border-t"
+            style={{ borderColor:'#E2E8EF', background: m.pct > 75 ? '#FFFBF0' : '#FFFFFF',
+              gridTemplateColumns:'120px 90px 110px 1fr 100px 70px' }}>
+            <span className="text-sm font-bold" style={{ color:'#1A2332' }}>{m.name}</span>
+            <span className="text-sm font-bold" style={{ color:'#14907F' }}>{fmt(m.ssbci)}</span>
+            <span className="text-xs" style={{ color:'#4A5568' }}>{fmt(m.cap)} allowance</span>
+            <div className="pr-4">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-2 rounded-full" style={{ background:'#E2E8EF' }}>
+                  <div className="h-2 rounded-full" style={{ width:`${m.pct}%`,
+                    background: m.pct > 80 ? '#C0392B' : m.pct > 60 ? '#F5A623' : '#14907F' }} />
+                </div>
+                <span className="text-xs font-bold flex-shrink-0"
+                  style={{ color: m.pct > 80 ? '#C0392B' : m.pct > 60 ? '#B45309' : '#0D7A6A' }}>{m.pct}%</span>
+              </div>
+            </div>
+            <TriggerBadge trigger={m.trigger} />
+            <span className="text-xs font-bold" style={{ color: RISK_COLORS[m.risk] || '#8A9BB0' }}>{m.risk}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded px-4 py-2 text-xs" style={{ background:'#D4EDE9', color:'#0D7A6A', borderLeft:'4px solid #14907F' }}>
+        ILOS cap protection is a direct output of Anchor's sequencing logic — every dollar routed to Medicaid or CBO first is a dollar of SSBCI budget preserved and ILOS exposure reduced.
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   SCREEN D: MEMBER CARE PLAN
+   Individualized benefit activation profile — clinical basis,
+   governed sequencing rationale, and SSBCI budget optimization
+   ══════════════════════════════════════════════════════ */
+
+const CARE_PLAN_MEMBER = {
+  name:'Margaret Chen', age:78, id:'D-4821', plan:'SCAN H0562',
+  aidCode:'14H', dualStatus:'Full Dual', riskTier:'HIGH',
+  acuityScore:82, functionalLevel:'Moderate-High Dependency',
+  conditions:['CHF','Type 2 Diabetes','Mobility Limitation','Depression'],
+  lastAssessment:'Mar 8, 2026 — Post-Discharge',
+  nextReview:'Jun 8, 2026',
+  carePlanVersion:'v3 — Updated Mar 10, 2026',
+  cm:'Sarah Chen, RN',
+};
+
+const CARE_PLAN_BENEFITS = [
+  {
+    benefit:'Personal Care Aide',
+    icon:'🧑‍⚕️',
+    payer:'Medicaid LTSS',
+    payerColor:'#6D28D9',
+    payerBg:'#EDE9FE',
+    activation:'Active',
+    clinicalBasis:'Post-discharge functional assessment: moderate ADL dependency (score 14/28 Katz). CHF exacerbation resulted in reduced endurance and temporary mobility limitation. Personal care 4 hrs/day medically necessary per discharging hospitalist order.',
+    activationLevel:'4 hrs/day · 28 hrs/wk',
+    planMaximum:'4 hrs/day (Medicaid HCBS waiver limit)',
+    ssbciImpact:'$0 — fully covered by Medicaid',
+    reviewTrigger:'90-day functional reassessment or change in condition',
+    status:'Authorized',
+    authBasis:'Medicaid HCBS waiver — Aid Code 14H · Auth #MC-2026-0341',
+  },
+  {
+    benefit:'Home-Delivered Meals',
+    icon:'🍱',
+    payer:'CBO / Community',
+    payerColor:'#1D4ED8',
+    payerBg:'#DBEAFE',
+    activation:'Active',
+    clinicalBasis:'Food insecurity identified at discharge screening (HRSN score 3/5). Member lives alone, limited mobility post-discharge prevents independent grocery access. Meals on Wheels confirmed in ZIP 90210 delivery zone — $0 cost to plan.',
+    activationLevel:'7 meals/wk',
+    planMaximum:'SSBCI: $600/yr supplemental available if CBO capacity changes',
+    ssbciImpact:'$0 — CBO fulfillment; SSBCI budget preserved',
+    reviewTrigger:'If CBO delivery lapses or member condition changes',
+    status:'Enrolled',
+    authBasis:'CBO enrollment — Meals on Wheels LA · Ref #MoW-8821',
+  },
+  {
+    benefit:'Non-Emergency Transportation',
+    icon:'🚗',
+    payer:'SSBCI',
+    payerColor:'#14907F',
+    payerBg:'#D4EDE9',
+    activation:'Active',
+    clinicalBasis:'CHF requires monthly cardiology follow-up + weekly wound care visits. Medicaid NEMT covers medical appointments only. Member has no personal vehicle or caregiver transport. Ride benefit activated at reduced frequency (2x/wk) based on current appointment schedule — below plan maximum to preserve SSBCI budget.',
+    activationLevel:'8 rides/mo (plan max: 24 rides/yr · 2/wk)',
+    planMaximum:'24 rides/yr · $840 SSBCI benefit allowance',
+    ssbciImpact:'$160/mo · projected $480 for remainder of plan year',
+    reviewTrigger:'Quarterly — adjust frequency to appointment schedule',
+    status:'Active',
+    authBasis:'Care plan authorization — CM Sarah Chen, RN · Mar 10, 2026',
+  },
+  {
+    benefit:'Home Safety Modification',
+    icon:'🏠',
+    payer:'SSBCI',
+    payerColor:'#14907F',
+    payerBg:'#D4EDE9',
+    activation:'Deferred',
+    clinicalBasis:'Fall risk identified (Morse score 55 — high). Home assessment recommended. Deferred pending home visit scheduled Mar 24. If grab bars and threshold ramps indicated, SSBCI benefit activated at that time. Deferral documented to avoid premature spend — reassess at home visit.',
+    activationLevel:'Pending home visit Mar 24, 2026',
+    planMaximum:'$500 SSBCI benefit allowance',
+    ssbciImpact:'$0 until home visit — deferral documented',
+    reviewTrigger:'Home visit Mar 24 — activate if hazards confirmed',
+    status:'Deferred',
+    authBasis:'Deferred pending assessment — CM Sarah Chen, RN',
+  },
+  {
+    benefit:'Behavioral Health Outreach',
+    icon:'🧠',
+    payer:'Medicaid LTSS',
+    payerColor:'#6D28D9',
+    payerBg:'#EDE9FE',
+    activation:'Initiated',
+    clinicalBasis:'PHQ-9 score 11 (moderate depression) at discharge. Member declined inpatient referral. Medicaid community mental health outreach authorized. Care plan documents clinical basis for benefit activation and documents member preference for in-home support over clinic-based care.',
+    activationLevel:'Bi-weekly outreach calls + monthly in-home visit',
+    planMaximum:'Medicaid community behavioral health benefit',
+    ssbciImpact:'$0 — Medicaid behavioral health benefit',
+    reviewTrigger:'60-day reassessment — PHQ-9 re-administration',
+    status:'Initiated',
+    authBasis:'Medicaid BH benefit · Auth #BH-2026-0118',
+  },
+];
+
+const STATUS_PLAN = {
+  'Authorized': { bg:'#D4EDE9', text:'#0D7A6A' },
+  'Enrolled':   { bg:'#DBEAFE', text:'#1D4ED8' },
+  'Active':     { bg:'#E8F5F1', text:'#1D7A5F' },
+  'Deferred':   { bg:'#FEF3DC', text:'#B45309' },
+  'Initiated':  { bg:'#EDE9FE', text:'#6D28D9' },
+};
+
+function MemberCarePlan() {
+  const [expanded, setExpanded] = useState('Personal Care Aide');
+  const ssbciTotal = CARE_PLAN_BENEFITS.filter(b => b.payer === 'SSBCI' && b.activation !== 'Deferred').length;
+
+  return (
+    <div className="flex flex-col gap-4 p-6 flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-xs font-bold mb-1" style={{ color:'#14907F' }}>PLAN VIEW · MEMBER CARE PLAN</div>
+          <h1 className="text-2xl font-bold" style={{ color:'#0B1D3A' }}>Individualized Non-Medical Care Plan</h1>
+          <div className="text-sm mt-1" style={{ color:'#8A9BB0' }}>
+            Anchor-governed benefit activation profile · Clinical rationale documented at each decision point
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button className="px-3 py-1.5 rounded text-sm" style={{ background:'#F0F2F5', color:'#4A5568', border:'none', cursor:'pointer' }}>Print / Export</button>
+          <button className="px-3 py-1.5 rounded text-sm font-bold" style={{ background:'#14907F', color:'#FFFFFF', border:'none', cursor:'pointer' }}>Submit to CMS</button>
+        </div>
+      </div>
+
+      {/* Member + care plan header */}
+      <div className="bg-white rounded shadow-sm p-4">
+        <div className="flex items-start gap-4">
+          <Avatar initials="MC" size="lg" />
+          <div className="flex-1">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className="text-base font-bold" style={{ color:'#1A2332' }}>{CARE_PLAN_MEMBER.name}</span>
+              <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ background:'#EDE9FE', color:'#6D28D9' }}>Full Dual · Aid Code {CARE_PLAN_MEMBER.aidCode}</span>
+              <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ background:'#FDECEA', color:'#C0392B' }}>Risk: HIGH · Acuity {CARE_PLAN_MEMBER.acuityScore}/100</span>
+              <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ background:'#F0F2F5', color:'#4A5568' }}>{CARE_PLAN_MEMBER.functionalLevel}</span>
+            </div>
+            <div className="text-xs mb-2" style={{ color:'#8A9BB0' }}>
+              MRN {CARE_PLAN_MEMBER.id} · {CARE_PLAN_MEMBER.plan} · CM: {CARE_PLAN_MEMBER.cm} · {CARE_PLAN_MEMBER.carePlanVersion}
+            </div>
+            <div className="flex gap-1.5 flex-wrap">
+              {CARE_PLAN_MEMBER.conditions.map(c => (
+                <span key={c} className="px-2 py-0.5 rounded text-xs" style={{ background:'#F0F2F5', color:'#4A5568' }}>{c}</span>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-1 text-right flex-shrink-0">
+            <div className="text-xs" style={{ color:'#8A9BB0' }}>Last assessment: <strong style={{ color:'#1A2332' }}>{CARE_PLAN_MEMBER.lastAssessment}</strong></div>
+            <div className="text-xs" style={{ color:'#8A9BB0' }}>Next review: <strong style={{ color:'#14907F' }}>{CARE_PLAN_MEMBER.nextReview}</strong></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Budget optimization summary */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-white rounded p-4 shadow-sm">
+          <div className="text-xs font-bold mb-1" style={{ color:'#8A9BB0' }}>ACTIVE BENEFITS</div>
+          <div className="text-3xl font-bold" style={{ color:'#14907F' }}>5</div>
+          <div className="text-xs mt-1" style={{ color:'#8A9BB0' }}>across 3 payer sources</div>
+        </div>
+        <div className="bg-white rounded p-4 shadow-sm">
+          <div className="text-xs font-bold mb-1" style={{ color:'#8A9BB0' }}>MEDICAID / CBO COVERAGE</div>
+          <div className="text-3xl font-bold" style={{ color:'#6D28D9' }}>3/5</div>
+          <div className="text-xs mt-1" style={{ color:'#8A9BB0' }}>needs covered at $0 to plan</div>
+        </div>
+        <div className="bg-white rounded p-4 shadow-sm">
+          <div className="text-xs font-bold mb-1" style={{ color:'#8A9BB0' }}>SSBCI ACTIVATED</div>
+          <div className="text-3xl font-bold" style={{ color:'#14907F' }}>$160<span className="text-base font-normal">/mo</span></div>
+          <div className="text-xs mt-1" style={{ color:'#8A9BB0' }}>vs. $360/mo if no sequencing</div>
+        </div>
+        <div className="bg-white rounded p-4 shadow-sm">
+          <div className="text-xs font-bold mb-1" style={{ color:'#8A9BB0' }}>SSBCI BUDGET PRESERVED</div>
+          <div className="text-3xl font-bold" style={{ color:'#1D7A5F' }}>$2,400</div>
+          <div className="text-xs mt-1" style={{ color:'#8A9BB0' }}>est. annual savings vs. unsequenced</div>
+        </div>
+      </div>
+
+      {/* Clinical basis explainer */}
+      <div className="rounded px-4 py-3 text-xs" style={{ background:'#EDE9FE', color:'#6D28D9', borderLeft:'4px solid #6D28D9' }}>
+        <strong>CMS Compliance Note:</strong> Differential benefit utilization across members with the same uniform benefit package is defensible when grounded in a documented, individualized care plan. Each activation below includes the clinical or functional rationale that justifies the specific level of benefit activated for this member — and any deferral is documented with equal rigor.
+      </div>
+
+      {/* Benefit rows */}
+      <div className="text-sm font-bold" style={{ color:'#1A2332' }}>INDIVIDUALIZED BENEFIT ACTIVATION PROFILE</div>
+      {CARE_PLAN_BENEFITS.map(b => {
+        const isOpen = expanded === b.benefit;
+        const ss = STATUS_PLAN[b.status] || { bg:'#F0F2F5', text:'#4A5568' };
+        return (
+          <div key={b.benefit} className="bg-white rounded shadow-sm overflow-hidden"
+            style={{ borderLeft:`4px solid ${b.payerColor}` }}>
+            {/* Row header */}
+            <div className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50"
+              onClick={() => setExpanded(isOpen ? null : b.benefit)}
+              style={{ borderBottom: isOpen ? '1px solid #E2E8EF' : 'none' }}>
+              <div className="flex items-center gap-3">
+                <span className="text-xl">{b.icon}</span>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-bold" style={{ color:'#1A2332' }}>{b.benefit}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-bold"
+                      style={{ background: b.payerBg, color: b.payerColor }}>{b.payer}</span>
+                    <span className="text-xs px-2 py-0.5 rounded font-bold"
+                      style={{ background: ss.bg, color: ss.text }}>{b.status}</span>
+                  </div>
+                  <div className="text-xs mt-0.5" style={{ color:'#8A9BB0' }}>
+                    {b.activationLevel} · SSBCI impact: <strong style={{ color: b.ssbciImpact.startsWith('$0') ? '#0D7A6A' : '#B45309' }}>{b.ssbciImpact.split(' —')[0]}</strong>
+                  </div>
+                </div>
+              </div>
+              <span style={{ color:'#8A9BB0', flexShrink:0 }}>{isOpen ? '▲' : '▼'}</span>
+            </div>
+
+            {/* Expanded detail */}
+            {isOpen && (
+              <div className="px-4 py-4 flex flex-col gap-3">
+                {/* Clinical basis */}
+                <div className="rounded p-3" style={{ background:'#F7F9FB', border:'1px solid #E2E8EF' }}>
+                  <div className="text-xs font-bold mb-1" style={{ color:'#1A2332' }}>CLINICAL / FUNCTIONAL BASIS</div>
+                  <p className="text-xs leading-relaxed" style={{ color:'#4A5568' }}>{b.clinicalBasis}</p>
+                </div>
+
+                {/* Three-column detail grid */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded p-3" style={{ background: b.payerBg }}>
+                    <div className="text-xs font-bold mb-1" style={{ color: b.payerColor }}>ACTIVATION LEVEL</div>
+                    <div className="text-xs" style={{ color:'#4A5568' }}>{b.activationLevel}</div>
+                    <div className="text-xs mt-1" style={{ color:'#8A9BB0' }}>Plan max: {b.planMaximum}</div>
+                  </div>
+                  <div className="rounded p-3" style={{ background: b.ssbciImpact.startsWith('$0') ? '#E8F5F1' : '#FEF3DC' }}>
+                    <div className="text-xs font-bold mb-1"
+                      style={{ color: b.ssbciImpact.startsWith('$0') ? '#0D7A6A' : '#B45309' }}>SSBCI BUDGET IMPACT</div>
+                    <div className="text-xs font-bold" style={{ color:'#1A2332' }}>{b.ssbciImpact.split(' —')[0]}</div>
+                    <div className="text-xs mt-1" style={{ color:'#4A5568' }}>{b.ssbciImpact.split(' — ')[1] || ''}</div>
+                  </div>
+                  <div className="rounded p-3" style={{ background:'#F0F2F5' }}>
+                    <div className="text-xs font-bold mb-1" style={{ color:'#4A5568' }}>REVIEW TRIGGER</div>
+                    <div className="text-xs" style={{ color:'#4A5568' }}>{b.reviewTrigger}</div>
+                  </div>
+                </div>
+
+                {/* Auth basis */}
+                <div className="text-xs px-3 py-2 rounded" style={{ background:'#D4EDE9', color:'#0D7A6A' }}>
+                  <strong>Authorization basis:</strong> {b.authBasis}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      <div className="rounded px-4 py-2 text-xs" style={{ background:'#1A2332', color:'#AABCCC', borderLeft:'4px solid #14907F' }}>
+        <strong style={{ color:'#FFFFFF' }}>Anchor's role:</strong> The care plan is not a document — it's the governance record that makes every benefit activation, deferral, and sequencing decision defensible to CMS. Differential utilization across a uniform benefit package is only compliant when it's this well-documented.
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   SCREEN E: MEMBER PORTAL — Mobile-first, SCAN-branded
+   Plain language, member-facing care plan view
+   "Powered by Anchor" in footer
+   ══════════════════════════════════════════════════════ */
+
+const PORTAL_BENEFITS = [
+  {
+    emoji: '🧑‍⚕️',
+    title: 'Personal Care Helper',
+    subtitle: 'Covered by Medi-Cal',
+    status: 'Active',
+    statusColor: '#0D7A6A',
+    statusBg: '#D4EDE9',
+    summary: 'You have a personal care helper approved for 4 hours a day to help with bathing, dressing, and getting around.',
+    detail: 'Your Medi-Cal coverage is paying for this — there is no cost to you. Your helper will contact you within 2 business days.',
+    nextStep: null,
+    coverageTag: 'Medi-Cal · No cost to you',
+    coverageColor: '#6D28D9',
+    coverageBg: '#EDE9FE',
+  },
+  {
+    emoji: '🍱',
+    title: 'Meal Delivery',
+    subtitle: 'Meals on Wheels',
+    status: 'Active',
+    statusColor: '#0D7A6A',
+    statusBg: '#D4EDE9',
+    summary: 'You are enrolled to receive 7 meals per week delivered to your home.',
+    detail: 'Meals are delivered Monday through Sunday. Your first delivery is scheduled for March 12. There is no cost to you — this is covered by a community program.',
+    nextStep: null,
+    coverageTag: 'Community Program · No cost to you',
+    coverageColor: '#1D4ED8',
+    coverageBg: '#DBEAFE',
+  },
+  {
+    emoji: '🚗',
+    title: 'Rides to Appointments',
+    subtitle: 'SCAN Ride Benefit',
+    status: 'Active',
+    statusColor: '#0D7A6A',
+    statusBg: '#D4EDE9',
+    summary: 'You have up to 8 rides per month to medical appointments covered by your SCAN plan.',
+    detail: 'You have used 0 of your 8 rides this month. To schedule a ride, call the number on your SCAN member card or use the SCAN app at least 48 hours in advance.',
+    nextStep: 'Schedule a ride: 1-800-555-SCAN',
+    coverageTag: 'SCAN Plan Benefit · No cost to you',
+    coverageColor: '#14907F',
+    coverageBg: '#D4EDE9',
+  },
+  {
+    emoji: '🏠',
+    title: 'Home Safety Check',
+    subtitle: 'Scheduled Assessment',
+    status: 'Coming Soon',
+    statusColor: '#B45309',
+    statusBg: '#FEF3DC',
+    summary: 'A home safety specialist will visit to check for things like grab bars, lighting, and trip hazards.',
+    detail: 'Your visit is scheduled for March 24. If grab bars or other safety items are needed, your SCAN plan will cover up to $500. Someone will call to confirm the appointment.',
+    nextStep: 'Appointment: March 24 · Confirm: 1-800-555-SCAN',
+    coverageTag: 'SCAN Plan Benefit · Up to $500',
+    coverageColor: '#14907F',
+    coverageBg: '#D4EDE9',
+  },
+  {
+    emoji: '🧠',
+    title: 'Emotional Wellness Support',
+    subtitle: 'Medi-Cal Behavioral Health',
+    status: 'In Progress',
+    statusColor: '#6D28D9',
+    statusBg: '#EDE9FE',
+    summary: 'A behavioral health counselor will reach out to check in and provide support.',
+    detail: 'Your care manager arranged for bi-weekly check-in calls and a monthly home visit. The first call is scheduled for March 15. This is covered by Medi-Cal at no cost to you.',
+    nextStep: null,
+    coverageTag: 'Medi-Cal · No cost to you',
+    coverageColor: '#6D28D9',
+    coverageBg: '#EDE9FE',
+  },
+];
+
+const PORTAL_TIMELINE = [
+  { date:'Mar 8',  event:'Discharged from St. Joseph\'s Medical', icon:'🏥', done:true },
+  { date:'Mar 10', event:'Care plan created by your care manager, Sarah Chen RN', icon:'📋', done:true },
+  { date:'Mar 10', event:'Personal care and meal delivery activated', icon:'✅', done:true },
+  { date:'Mar 12', event:'First meal delivery', icon:'🍱', done:false },
+  { date:'Mar 15', event:'Wellness check-in call', icon:'📞', done:false },
+  { date:'Mar 24', event:'Home safety visit', icon:'🏠', done:false },
+  { date:'Jun 8',  event:'Care plan review with Sarah Chen RN', icon:'📅', done:false },
+];
+
+function MemberPortal() {
+  const [openCard, setOpenCard] = useState(null);
+  const [acknowledged, setAcknowledged] = useState(false);
+
+  return (
+    <div className="flex flex-col flex-1 overflow-auto" style={{ background:'#F7F9FB' }}>
+
+      {/* Mobile frame wrapper */}
+      <div className="flex justify-center py-6 px-4">
+        <div className="w-full max-w-sm flex flex-col gap-0 rounded-2xl overflow-hidden shadow-xl"
+          style={{ background:'#FFFFFF', border:'1px solid #E2E8EF', minHeight:'700px' }}>
+
+          {/* Plan header bar */}
+          <div className="px-5 pt-5 pb-4" style={{ background:'#003865' }}>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="text-white font-bold text-lg tracking-tight">SCAN Health Plan</div>
+                <div className="text-xs mt-0.5" style={{ color:'#A8C4E0' }}>Member Care Plan · H0562</div>
+              </div>
+              <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold"
+                style={{ background:'#D4EDE9', color:'#0D7A6A' }}>MC</div>
+            </div>
+            <div className="rounded-xl px-4 py-3" style={{ background:'rgba(255,255,255,0.1)' }}>
+              <div className="text-white font-bold text-base">Hi Margaret 👋</div>
+              <div className="text-xs mt-0.5" style={{ color:'#A8C4E0' }}>
+                Your care plan was updated March 10 after your hospital stay. Here's what we've set up for you.
+              </div>
+            </div>
+          </div>
+
+          {/* Care manager strip */}
+          <div className="flex items-center gap-3 px-5 py-3" style={{ background:'#E8F5F1', borderBottom:'1px solid #D4EDE9' }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+              style={{ background:'#14907F', color:'#FFFFFF' }}>SC</div>
+            <div className="flex-1">
+              <div className="text-xs font-bold" style={{ color:'#0D7A6A' }}>Your Care Manager</div>
+              <div className="text-xs" style={{ color:'#4A5568' }}>Sarah Chen, RN · Available Mon–Fri 8am–5pm</div>
+            </div>
+            <button className="text-xs font-bold px-3 py-1.5 rounded-full flex-shrink-0"
+              style={{ background:'#14907F', color:'#FFFFFF', border:'none', cursor:'pointer' }}>
+              Call
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="flex flex-col gap-0 flex-1 overflow-auto px-4 py-4" style={{ gap:'12px', display:'flex', flexDirection:'column' }}>
+
+            {/* Section label */}
+            <div className="text-xs font-bold px-1" style={{ color:'#8A9BB0' }}>YOUR ACTIVE SERVICES</div>
+
+            {/* Benefit cards */}
+            {PORTAL_BENEFITS.map((b, i) => {
+              const isOpen = openCard === i;
+              return (
+                <div key={i} className="rounded-2xl overflow-hidden"
+                  style={{ background:'#FFFFFF', border:'1px solid #E2E8EF', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+                  <div className="flex items-center gap-3 px-4 py-3 cursor-pointer"
+                    onClick={() => setOpenCard(isOpen ? null : i)}>
+                    <span className="text-2xl flex-shrink-0">{b.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold" style={{ color:'#1A2332' }}>{b.title}</div>
+                      <div className="text-xs" style={{ color:'#8A9BB0' }}>{b.subtitle}</div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                        style={{ background: b.statusBg, color: b.statusColor }}>{b.status}</span>
+                      <span style={{ color:'#AABCCC', fontSize:'10px' }}>{isOpen ? '▲' : '▼'}</span>
+                    </div>
+                  </div>
+                  {isOpen && (
+                    <div className="px-4 pb-4 flex flex-col gap-2.5"
+                      style={{ borderTop:'1px solid #F0F2F5' }}>
+                      <p className="text-xs leading-relaxed pt-3" style={{ color:'#4A5568' }}>{b.detail}</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs px-2 py-0.5 rounded-full font-bold"
+                          style={{ background: b.coverageBg, color: b.coverageColor }}>
+                          {b.coverageTag}
+                        </span>
+                      </div>
+                      {b.nextStep && (
+                        <div className="rounded-xl px-3 py-2.5 text-xs font-bold"
+                          style={{ background:'#003865', color:'#FFFFFF' }}>
+                          👉 {b.nextStep}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Timeline */}
+            <div className="text-xs font-bold px-1 mt-2" style={{ color:'#8A9BB0' }}>WHAT HAPPENS NEXT</div>
+            <div className="rounded-2xl overflow-hidden px-4 py-3 flex flex-col gap-0"
+              style={{ background:'#FFFFFF', border:'1px solid #E2E8EF' }}>
+              {PORTAL_TIMELINE.map((t, i) => (
+                <div key={i} className="flex items-start gap-3 py-2.5"
+                  style={{ borderBottom: i < PORTAL_TIMELINE.length-1 ? '1px solid #F0F2F5' : 'none',
+                    opacity: t.done ? 0.55 : 1 }}>
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-sm flex-shrink-0 mt-0.5"
+                    style={{ background: t.done ? '#D4EDE9' : '#F0F2F5' }}>
+                    {t.done ? '✓' : t.icon}
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs font-bold" style={{ color: t.done ? '#8A9BB0' : '#1A2332' }}>{t.date}</div>
+                    <div className="text-xs" style={{ color: t.done ? '#8A9BB0' : '#4A5568' }}>{t.event}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Acknowledge button */}
+            {!acknowledged ? (
+              <button onClick={() => setAcknowledged(true)}
+                className="w-full py-3.5 rounded-2xl text-sm font-bold mt-1"
+                style={{ background:'#14907F', color:'#FFFFFF', border:'none', cursor:'pointer' }}>
+                I've reviewed my care plan ✓
+              </button>
+            ) : (
+              <div className="w-full py-3 rounded-2xl text-sm font-bold text-center mt-1"
+                style={{ background:'#D4EDE9', color:'#0D7A6A' }}>
+                ✓ Acknowledged March 10, 2026
+              </div>
+            )}
+
+            {/* Questions */}
+            <div className="rounded-2xl px-4 py-3 text-center"
+              style={{ background:'#F7F9FB', border:'1px solid #E2E8EF' }}>
+              <div className="text-xs font-bold mb-1" style={{ color:'#1A2332' }}>Questions about your plan?</div>
+              <div className="text-xs" style={{ color:'#8A9BB0' }}>Call Sarah Chen, RN: <strong style={{ color:'#14907F' }}>1-800-555-SCAN</strong></div>
+              <div className="text-xs mt-0.5" style={{ color:'#8A9BB0' }}>Mon–Fri 8am–5pm PT</div>
+            </div>
+
+            {/* Powered by Anchor */}
+            <div className="flex items-center justify-center gap-1.5 pb-2 mt-1">
+              <span className="text-xs" style={{ color:'#AABCCC' }}>Care plan managed by</span>
+              <span className="text-xs font-bold" style={{ color:'#14907F' }}>ANCHOR</span>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background:'#14907F' }} />
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {/* Context note for focus group */}
+      <div className="max-w-sm mx-auto px-4 pb-6 text-xs text-center" style={{ color:'#8A9BB0' }}>
+        Mobile portal · SCAN-branded · "Powered by Anchor" · Member acknowledges care plan on device
+      </div>
+    </div>
+  );
+}
+
+/* ── APP ROOT ── */
+const SCREENS = {
+  'CM Worklist':        CMWorklist,
+  'Benefit Sequencing': BenefitSequencing,
+  'Coverage Stack':     CoverageStack,
+  'ILOS / Cap Tracker': ILOSTracker,
+  'Member Care Plan':   MemberCarePlan,
+  'Member Portal':      MemberPortal,
+  'Provider: AWV':      AWVQueue,
+  'Member Detail':      MemberDetail,
+  'Needs Assessment':   NeedsAssessment,
+  'Panel Overview':     PanelOverview,
+  'Plan Dashboard':     PlanDashboard,
+  'Activation Log':     ActivationLog,
+};
+
+function App() {
+  const [active, setActive] = useState('CM Worklist');
+  const Screen = SCREENS[active];
+  return (
+    <div className="flex flex-col h-screen overflow-hidden">
+      <NavBar active={active} onNav={setActive} />
+      <Screen onNav={setActive} />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
